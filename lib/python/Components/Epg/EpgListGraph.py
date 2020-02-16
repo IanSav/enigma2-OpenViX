@@ -2,11 +2,11 @@ import skin
 from time import localtime, time, strftime
 
 from enigma import eEPGCache, eListbox, eListboxPythonMultiContent, loadPNG, gFont, getDesktop, eRect, eSize, RT_HALIGN_LEFT, RT_HALIGN_RIGHT, RT_HALIGN_CENTER, RT_VALIGN_CENTER, RT_VALIGN_TOP, RT_WRAP, BT_SCALE, BT_KEEP_ASPECT_RATIO, BT_ALIGN_CENTER
+from skin import parseColor, parseFont
 
 from Components.GUIComponent import GUIComponent
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmapAlphaBlend, MultiContentEntryPixmapAlphaTest
 from Components.Renderer.Picon import getPiconName
-from skin import parseColor, parseFont
 from Tools.Alternatives import CompareWithAlternatives
 from Components.config import config
 from ServiceReference import ServiceReference
@@ -24,6 +24,8 @@ SECS_IN_MIN = 60
 class EPGListGraph(EPGListBase):
 	def __init__(self, type, selChangedCB = None, timer = None, graphic=True):
 		print "[EPGListGraph] Init"
+		EPGListBase.__init__(self, type, selChangedCB, timer)
+
 		self.time_focus = time() # default to now
 		self.cur_event = None
 		self.cur_service = None
@@ -34,10 +36,78 @@ class EPGListGraph(EPGListBase):
 		self.showPicon = False
 		self.showServiceTitle = True
 		self.showServiceNumber = False
-		self.screenwidth = getDesktop(0).size().width()
 		self.graphic = graphic
 
-		EPGListBase.__init__(self, type, selChangedCB, timer)
+		self.nowEvPix = None
+		self.nowSelEvPix = None
+		self.othEvPix = None
+		self.selEvPix = None
+		self.othServPix = None
+		self.nowServPix = None
+		self.recEvPix = None
+		self.recSelEvPix = None
+		self.zapEvPix = None
+		self.zapSelEvPix = None
+
+		self.borderTopPix = None
+		self.borderBottomPix = None
+		self.borderLeftPix = None
+		self.borderRightPix = None
+		self.borderSelectedTopPix = None
+		self.borderSelectedLeftPix = None
+		self.borderSelectedBottomPix = None
+		self.borderSelectedRightPix = None
+		self.InfoPix = None
+		self.selInfoPix = None
+		self.graphicsloaded = False
+
+		self.borderColor = 0xC0C0C0
+		self.borderColorService = 0xC0C0C0
+
+		self.foreColor = 0xffffff
+		self.foreColorSelected = 0xffffff
+		self.backColor = 0x2D455E
+		self.backColorSelected = 0xd69600
+		self.foreColorService = 0xffffff
+		self.backColorService = 0x2D455E
+		self.foreColorNow = 0xffffff
+		self.foreColorNowSelected = 0xffffff
+		self.backColorNow = 0x00825F
+		self.backColorNowSelected = 0xd69600
+		self.foreColorServiceNow = 0xffffff
+		self.backColorServiceNow = 0x00825F
+
+		self.foreColorRecord = 0xffffff
+		self.backColorRecord = 0xd13333
+		self.foreColorRecordSelected = 0xffffff
+		self.backColorRecordSelected = 0x9e2626
+		self.foreColorZap = 0xffffff
+		self.backColorZap = 0x669466
+		self.foreColorZapSelected = 0xffffff
+		self.backColorZapSelected = 0x436143
+
+		self.serviceFontNameGraph = "Regular"
+		self.eventFontNameGraph = "Regular"
+		self.serviceFontNameInfobar = "Regular"
+		self.eventFontNameInfobar = "Regular"
+
+		self.serviceBorderWidth = 1
+		self.serviceNamePadding = 3
+		self.serviceNumberPadding = 9
+		self.eventBorderWidth = 1
+		self.eventNamePadding = 3
+		self.serviceNumberWidth = 0
+
+		if self.screenwidth == 1920:
+			self.serviceFontSizeGraph = 28
+			self.eventFontSizeGraph = 28
+			self.serviceFontSizeInfobar = 28
+			self.eventFontSizeInfobar = 28
+		else:
+			self.serviceFontSizeGraph = 20
+			self.eventFontSizeGraph = 20
+			self.serviceFontSizeInfobar = 20
+			self.eventFontSizeInfobar = 20
 
 		if self.type == EPG_TYPE_GRAPH:
 			self.time_epoch=int(config.epgselection.graph_prevtimeperiod.value)
@@ -58,6 +128,88 @@ class EPGListGraph(EPGListBase):
 		self.showPicon = "picon" in value
 
 	def applySkin(self, desktop, screen):
+		if self.skinAttributes is not None:
+			attribs = [ ]
+			for (attrib, value) in self.skinAttributes:
+				if attrib == "ServiceFontGraphical":
+					font = parseFont(value, ((1,1),(1,1)) )
+					self.serviceFontNameGraph = font.family
+					self.serviceFontSizeGraph = font.pointSize
+				elif attrib == "EntryFontGraphical":
+					font = parseFont(value, ((1,1),(1,1)) )
+					self.eventFontNameGraph = font.family
+					self.eventFontSizeGraph = font.pointSize
+				elif attrib == "ServiceFontInfobar":
+					font = parseFont(value, ((1,1),(1,1)) )
+					self.serviceFontNameInfobar = font.family
+					self.serviceFontSizeInfobar = font.pointSize
+				elif attrib == "EventFontInfobar":
+					font = parseFont(value, ((1,1),(1,1)) )
+					self.eventFontNameInfobar = font.family
+					self.eventFontSizeInfobar = font.pointSize
+
+				elif attrib == "ServiceForegroundColor":
+					self.foreColorService = parseColor(value).argb()
+				elif attrib == "ServiceForegroundColorNow":
+					self.foreColorServiceNow = parseColor(value).argb()
+				elif attrib == "ServiceBackgroundColor":
+					self.backColorService = parseColor(value).argb()
+				elif attrib == "ServiceBackgroundColorNow":
+					self.backColorServiceNow = parseColor(value).argb()
+
+				elif attrib == "EntryForegroundColor":
+					self.foreColor = parseColor(value).argb()
+				elif attrib == "EntryForegroundColorSelected":
+					self.foreColorSelected = parseColor(value).argb()
+				elif attrib == "EntryBackgroundColor":
+					self.backColor = parseColor(value).argb()
+				elif attrib == "EntryBackgroundColorSelected":
+					self.backColorSelected = parseColor(value).argb()
+				elif attrib == "EntryBackgroundColorNow":
+					self.backColorNow = parseColor(value).argb()
+				elif attrib == "EntryBackgroundColorNowSelected":
+					self.backColorNowSelected = parseColor(value).argb()
+				elif attrib == "EntryForegroundColorNow":
+					self.foreColorNow = parseColor(value).argb()
+				elif attrib == "EntryForegroundColorNowSelected":
+					self.foreColorNowSelected = parseColor(value).argb()
+
+				elif attrib == "ServiceBorderColor":
+					self.borderColorService = parseColor(value).argb()
+				elif attrib == "ServiceBorderWidth":
+					self.serviceBorderWidth = int(value)
+				elif attrib == "ServiceNamePadding":
+					self.serviceNamePadding = int(value)
+				elif attrib == "ServiceNumberPadding":
+					self.serviceNumberPadding = int(value)
+				elif attrib == "EntryBorderColor":
+					self.borderColor = parseColor(value).argb()
+				elif attrib == "EventBorderWidth":
+					self.eventBorderWidth = int(value)
+				elif attrib == "EventNamePadding":
+					self.eventNamePadding = int(value)
+
+				elif attrib == "RecordForegroundColor":
+					self.foreColorRecord = parseColor(value).argb()
+				elif attrib == "RecordForegroundColorSelected":
+					self.foreColorRecordSelected = parseColor(value).argb()
+				elif attrib == "RecordBackgroundColor":
+					self.backColorRecord = parseColor(value).argb()
+				elif attrib == "RecordBackgroundColorSelected":
+					self.backColorRecordSelected = parseColor(value).argb()
+				elif attrib == "ZapForegroundColor":
+					self.foreColorZap = parseColor(value).argb()
+				elif attrib == "ZapBackgroundColor":
+					self.backColorZap = parseColor(value).argb()
+				elif attrib == "ZapForegroundColorSelected":
+					self.foreColorZapSelected = parseColor(value).argb()
+				elif attrib == "ZapBackgroundColorSelected":
+					self.backColorZapSelected = parseColor(value).argb()
+				else:
+					attribs.append((attrib,value))
+			self.skinAttributes = attribs
+		rc = GUIComponent.applySkin(self, desktop, screen)
+
 		rc = EPGListBase.applySkin(self, desktop, screen)
 		self.setItemsPerPage()
 
@@ -72,9 +224,6 @@ class EPGListGraph(EPGListBase):
 				font = gFont(self.serviceFontNameGraph, self.serviceFontSizeGraph + font_conf)
 				self.serviceNumberWidth = getTextBoundarySize(self.instance, font, self.instance.size(), "0000" ).width()
 		return rc
-
-	def getCurrentChangeCount(self):
-		return 0
 
 	def setTimeFocus(self, time_focus):
 		self.time_focus = time_focus
@@ -155,11 +304,11 @@ class EPGListGraph(EPGListBase):
 						itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 2)
 					else:
 						itemHeight = 45
-			if self.NumberOfRows:
-				config.epgselection.graph_itemsperpage.default = self.NumberOfRows
+			if self.numberOfRows:
+				config.epgselection.graph_itemsperpage.default = self.numberOfRows
 		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			if self.NumberOfRows:
-				config.epgselection.infobar_itemsperpage.default = self.NumberOfRows
+			if self.numberOfRows:
+				config.epgselection.infobar_itemsperpage.default = self.numberOfRows
 			if self.listHeight > 0:
 				itemHeight = self.listHeight / config.epgselection.infobar_itemsperpage.value
 			else:
@@ -264,347 +413,344 @@ class EPGListGraph(EPGListBase):
 		return xpos + event_rect.left(), width
 
 	def buildEntry(self, service, service_name, events, picon, channel):
-		try:
-			r1 = self.service_rect
-			r2 = self.event_rect
-			left = r2.left()
-			top = r2.top()
-			width = r2.width()
-			height = r2.height()
-			selected = self.cur_service[0] == service
-			res = [ None ]
+		r1 = self.service_rect
+		r2 = self.event_rect
+		left = r2.left()
+		top = r2.top()
+		width = r2.width()
+		height = r2.height()
+		selected = self.cur_service[0] == service
+		res = [ None ]
 
-			borderTopPix = None
-			borderLeftPix = None
-			borderBottomPix = None
-			borderRightPix = None
+		borderTopPix = None
+		borderLeftPix = None
+		borderBottomPix = None
+		borderRightPix = None
 
-			# Picon and Service name
-			serviceForeColor = self.foreColorService
-			serviceBackColor = self.backColorService
-			bgpng = self.othServPix
-			if CompareWithAlternatives(service, self.currentlyPlaying and self.currentlyPlaying):
-				serviceForeColor = self.foreColorServiceNow
-				serviceBackColor = self.backColorServiceNow
-				bgpng = self.nowServPix
+		# Picon and Service name
+		serviceForeColor = self.foreColorService
+		serviceBackColor = self.backColorService
+		bgpng = self.othServPix
+		if CompareWithAlternatives(service, self.currentlyPlaying and self.currentlyPlaying):
+			serviceForeColor = self.foreColorServiceNow
+			serviceBackColor = self.backColorServiceNow
+			bgpng = self.nowServPix
 
-			if bgpng is not None and self.graphic:
-				serviceBackColor = None
+		if bgpng is not None and self.graphic:
+			serviceBackColor = None
+			res.append(MultiContentEntryPixmapAlphaBlend(
+					pos = (r1.left() + self.serviceBorderWidth, r1.top() + self.serviceBorderWidth),
+					size = (r1.width() - 2 * self.serviceBorderWidth, r1.height() - 2 * self.serviceBorderWidth),
+					png = bgpng,
+					flags = BT_SCALE))
+		else:
+			res.append(MultiContentEntryText(
+					pos  = (r1.left(), r1.top()),
+					size = (r1.width(), r1.height()),
+					font = 0, flags = RT_HALIGN_LEFT | RT_VALIGN_CENTER,
+					text = "",
+					color = serviceForeColor, color_sel = serviceForeColor,
+					backcolor = serviceBackColor, backcolor_sel = serviceBackColor,
+					border_width = self.serviceBorderWidth, border_color = self.borderColorService))
+
+		colX = r1.left() + self.serviceBorderWidth
+		if self.showPicon:
+			if picon is None: # go find picon and cache its location
+				picon = getPiconName(service)
+				curIdx = self.l.getCurrentSelectionIndex()
+				self.list[curIdx] = (service, service_name, events, picon, channel)
+			piconWidth = self.picon_size.width()
+			piconHeight = self.picon_size.height()
+			displayPicon = None
+			if picon != "":
+				displayPicon = loadPNG(picon)
+			if displayPicon is not None:
 				res.append(MultiContentEntryPixmapAlphaBlend(
-						pos = (r1.left() + self.serviceBorderWidth, r1.top() + self.serviceBorderWidth),
-						size = (r1.width() - 2 * self.serviceBorderWidth, r1.height() - 2 * self.serviceBorderWidth),
-						png = bgpng,
-						flags = BT_SCALE))
-			else:
-				res.append(MultiContentEntryText(
-						pos  = (r1.left(), r1.top()),
-						size = (r1.width(), r1.height()),
-						font = 0, flags = RT_HALIGN_LEFT | RT_VALIGN_CENTER,
-						text = "",
-						color = serviceForeColor, color_sel = serviceForeColor,
-						backcolor = serviceBackColor, backcolor_sel = serviceBackColor,
-						border_width = self.serviceBorderWidth, border_color = self.borderColorService))
-
-			colX = r1.left() + self.serviceBorderWidth
-			if self.showPicon:
-				if picon is None: # go find picon and cache its location
-					picon = getPiconName(service)
-					curIdx = self.l.getCurrentSelectionIndex()
-					self.list[curIdx] = (service, service_name, events, picon, channel)
-				piconWidth = self.picon_size.width()
-				piconHeight = self.picon_size.height()
-				displayPicon = None
-				if picon != "":
-					displayPicon = loadPNG(picon)
-				if displayPicon is not None:
-					res.append(MultiContentEntryPixmapAlphaBlend(
-						pos = (colX, r1.top() + self.serviceBorderWidth),
-						size = (piconWidth, piconHeight),
-						png = displayPicon,
-						backcolor = None, backcolor_sel = None, flags = BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_ALIGN_CENTER))
-					colX += piconWidth
-				elif not self.showServiceTitle:
-					# no picon so show servicename anyway in picon space
-					namefont = 1
-					namefontflag = int(config.epgselection.graph_servicename_alignment.value)
-					namewidth = piconWidth
-					res.append(MultiContentEntryText(
-						pos = (colX, r1.top() + self.serviceBorderWidth),
-						size = (piconWidth, r1.height() - 2 * self.serviceBorderWidth),
-						font = namefont, flags = namefontflag,
-						text = service_name,
-						color = serviceForeColor, color_sel = serviceForeColor,
-						backcolor = serviceBackColor, backcolor_sel = serviceBackColor))
-					colX += piconWidth
-
-			if self.showServiceNumber:
-				if not isinstance(channel, int):
-					channel = self.getChannelNumber(channel)
-
-				if channel:
-					namefont = 0
-					namefontflag = int(config.epgselection.graph_servicenumber_alignment.value)
-					font = gFont(self.serviceFontNameGraph, self.serviceFontSizeGraph + config.epgselection.graph_servfs.value)
-					channelWidth = getTextBoundarySize(self.instance, font, self.instance.size(), (channel < 10000) and "0000" or str(channel) ).width()
-					res.append(MultiContentEntryText(
-						pos = (colX + self.serviceNumberPadding, r1.top() + self.serviceBorderWidth),
-						size = (channelWidth, r1.height() - 2 * self.serviceBorderWidth),
-						font = namefont, flags = namefontflag,
-						text = str(channel),
-						color = serviceForeColor, color_sel = serviceForeColor,
-						backcolor = serviceBackColor, backcolor_sel = serviceBackColor))
-					colX += channelWidth + 2 * self.serviceNumberPadding
-
-			if self.showServiceTitle: # we have more space so reset parms
-				namefont = 0
+					pos = (colX, r1.top() + self.serviceBorderWidth),
+					size = (piconWidth, piconHeight),
+					png = displayPicon,
+					backcolor = None, backcolor_sel = None, flags = BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_ALIGN_CENTER))
+				colX += piconWidth
+			elif not self.showServiceTitle:
+				# no picon so show servicename anyway in picon space
+				namefont = 1
 				namefontflag = int(config.epgselection.graph_servicename_alignment.value)
-				namewidth = r1.width() - colX - 2 * self.serviceNamePadding - self.serviceBorderWidth
+				namewidth = piconWidth
 				res.append(MultiContentEntryText(
-					pos = (colX + self.serviceNamePadding, r1.top() + self.serviceBorderWidth),
-					size = (namewidth, r1.height() - 2 * self.serviceBorderWidth),
+					pos = (colX, r1.top() + self.serviceBorderWidth),
+					size = (piconWidth, r1.height() - 2 * self.serviceBorderWidth),
 					font = namefont, flags = namefontflag,
 					text = service_name,
 					color = serviceForeColor, color_sel = serviceForeColor,
 					backcolor = serviceBackColor, backcolor_sel = serviceBackColor))
+				colX += piconWidth
 
-			# Service Borders
-			if self.borderTopPix is not None and self.graphic:
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (r1.left(), r1.top()),
-						size = (r1.width(), self.serviceBorderWidth),
-						png = self.borderTopPix,
-						flags = BT_SCALE))
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (left, top),
-						size = (width, self.eventBorderWidth),
-						png = self.borderTopPix,
-						flags = BT_SCALE))
-			if self.borderBottomPix is not None and self.graphic:
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (r1.left(), r1.height()-self.serviceBorderWidth),
-						size = (r1.width(), self.serviceBorderWidth),
-						png = self.borderBottomPix,
-						flags = BT_SCALE))
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (left, height-self.eventBorderWidth),
-						size = (width, self.eventBorderWidth),
-						png = self.borderBottomPix,
-						flags = BT_SCALE))
-			if self.borderLeftPix is not None and self.graphic:
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (r1.left(), r1.top()),
-						size = (self.serviceBorderWidth, r1.height()),
-						png = self.borderLeftPix,
-						flags = BT_SCALE))
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (left, top),
-						size = (self.eventBorderWidth, height),
-						png = self.borderLeftPix,
-						flags = BT_SCALE))
-			if self.borderRightPix is not None and self.graphic:
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (r1.width()-self.serviceBorderWidth, r1.left()),
-						size = (self.serviceBorderWidth, r1.height()),
-						png = self.borderRightPix,
-						flags = BT_SCALE))
-				res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (left + width-self.eventBorderWidth, top),
-						size = (self.eventBorderWidth, height),
-						png = self.borderRightPix,
-						flags = BT_SCALE))
+		if self.showServiceNumber:
+			if not isinstance(channel, int):
+				channel = self.getChannelNumber(channel)
 
-			if self.graphic:
-				if not selected and self.othEvPix:
-					res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (left + self.eventBorderWidth, top + self.eventBorderWidth),
-						size = (width - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
-						png = self.othEvPix,
-						flags = BT_SCALE))
-				elif selected and self.selEvPix:
-					res.append(MultiContentEntryPixmapAlphaTest(
-						pos = (left + self.eventBorderWidth, top + self.eventBorderWidth),
-						size = (width - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
-						png = self.selEvPix,
-						flags = BT_SCALE))
-			else:
+			if channel:
+				namefont = 0
+				namefontflag = int(config.epgselection.graph_servicenumber_alignment.value)
+				font = gFont(self.serviceFontNameGraph, self.serviceFontSizeGraph + config.epgselection.graph_servfs.value)
+				channelWidth = getTextBoundarySize(self.instance, font, self.instance.size(), (channel < 10000) and "0000" or str(channel) ).width()
 				res.append(MultiContentEntryText(
-					pos = (left, top), size = (width, height),
-					font = 1, flags = RT_HALIGN_LEFT | RT_VALIGN_CENTER,
-					text = "", color = None, color_sel = None,
-					backcolor = self.backColor, backcolor_sel = self.backColorSelected,
-					border_width = self.eventBorderWidth, border_color = self.borderColor))
+					pos = (colX + self.serviceNumberPadding, r1.top() + self.serviceBorderWidth),
+					size = (channelWidth, r1.height() - 2 * self.serviceBorderWidth),
+					font = namefont, flags = namefontflag,
+					text = str(channel),
+					color = serviceForeColor, color_sel = serviceForeColor,
+					backcolor = serviceBackColor, backcolor_sel = serviceBackColor))
+				colX += channelWidth + 2 * self.serviceNumberPadding
 
-			# Events for service
-			if events:
-				start = self.time_base
-				end = start + self.time_epoch_secs
+		if self.showServiceTitle: # we have more space so reset parms
+			namefont = 0
+			namefontflag = int(config.epgselection.graph_servicename_alignment.value)
+			namewidth = r1.width() - colX - 2 * self.serviceNamePadding - self.serviceBorderWidth
+			res.append(MultiContentEntryText(
+				pos = (colX + self.serviceNamePadding, r1.top() + self.serviceBorderWidth),
+				size = (namewidth, r1.height() - 2 * self.serviceBorderWidth),
+				font = namefont, flags = namefontflag,
+				text = service_name,
+				color = serviceForeColor, color_sel = serviceForeColor,
+				backcolor = serviceBackColor, backcolor_sel = serviceBackColor))
 
-				now = time()
-				for ev in events:  #(event_id, event_title, begin_time, duration)
-					stime = ev[2]
-					duration = ev[3]
-					xpos, ewidth = self.calcEntryPosAndWidthHelper(stime, duration, start, end, width)
-					clock_types = self.getPixmapForEntry(service, ev[0], stime, duration)
+		# Service Borders
+		if self.borderTopPix is not None and self.graphic:
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (r1.left(), r1.top()),
+					size = (r1.width(), self.serviceBorderWidth),
+					png = self.borderTopPix,
+					flags = BT_SCALE))
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (left, top),
+					size = (width, self.eventBorderWidth),
+					png = self.borderTopPix,
+					flags = BT_SCALE))
+		if self.borderBottomPix is not None and self.graphic:
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (r1.left(), r1.height()-self.serviceBorderWidth),
+					size = (r1.width(), self.serviceBorderWidth),
+					png = self.borderBottomPix,
+					flags = BT_SCALE))
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (left, height-self.eventBorderWidth),
+					size = (width, self.eventBorderWidth),
+					png = self.borderBottomPix,
+					flags = BT_SCALE))
+		if self.borderLeftPix is not None and self.graphic:
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (r1.left(), r1.top()),
+					size = (self.serviceBorderWidth, r1.height()),
+					png = self.borderLeftPix,
+					flags = BT_SCALE))
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (left, top),
+					size = (self.eventBorderWidth, height),
+					png = self.borderLeftPix,
+					flags = BT_SCALE))
+		if self.borderRightPix is not None and self.graphic:
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (r1.width()-self.serviceBorderWidth, r1.left()),
+					size = (self.serviceBorderWidth, r1.height()),
+					png = self.borderRightPix,
+					flags = BT_SCALE))
+			res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (left + width-self.eventBorderWidth, top),
+					size = (self.eventBorderWidth, height),
+					png = self.borderRightPix,
+					flags = BT_SCALE))
 
-					foreColor = self.foreColor
-					backColor = self.backColor
-					foreColorSel = self.foreColorSelected
-					backColorSel = self.backColorSelected
+		if self.graphic:
+			if not selected and self.othEvPix:
+				res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (left + self.eventBorderWidth, top + self.eventBorderWidth),
+					size = (width - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
+					png = self.othEvPix,
+					flags = BT_SCALE))
+			elif selected and self.selEvPix:
+				res.append(MultiContentEntryPixmapAlphaTest(
+					pos = (left + self.eventBorderWidth, top + self.eventBorderWidth),
+					size = (width - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
+					png = self.selEvPix,
+					flags = BT_SCALE))
+		else:
+			res.append(MultiContentEntryText(
+				pos = (left, top), size = (width, height),
+				font = 1, flags = RT_HALIGN_LEFT | RT_VALIGN_CENTER,
+				text = "", color = None, color_sel = None,
+				backcolor = self.backColor, backcolor_sel = self.backColorSelected,
+				border_width = self.eventBorderWidth, border_color = self.borderColor))
+
+		# Events for service
+		if events:
+			start = self.time_base
+			end = start + self.time_epoch_secs
+
+			now = time()
+			for ev in events:  #(event_id, event_title, begin_time, duration)
+				stime = ev[2]
+				duration = ev[3]
+				xpos, ewidth = self.calcEntryPosAndWidthHelper(stime, duration, start, end, width)
+				clock_types = self.getPixmapForEntry(service, ev[0], stime, duration)
+
+				foreColor = self.foreColor
+				backColor = self.backColor
+				foreColorSel = self.foreColorSelected
+				backColorSel = self.backColorSelected
+				if clock_types is not None and clock_types == 2:
+					foreColor = self.foreColorRecord
+					backColor = self.backColorRecord
+					foreColorSel = self.foreColorRecordSelected
+					backColorSel = self.backColorRecordSelected
+				elif clock_types is not None and clock_types == 7:
+					foreColor = self.foreColorZap
+					backColor = self.backColorZap
+					foreColorSel = self.foreColorZapSelected
+					backColorSel = self.backColorZapSelected
+				elif stime <= now < (stime + duration) and config.epgselection.graph_highlight_current_events.value:
+					foreColor = self.foreColorNow
+					backColor = self.backColorNow
+					foreColorSel = self.foreColorNowSelected
+					backColorSel = self.backColorNowSelected
+
+				if selected and self.select_rect.left() == xpos + left:
+					if clock_types is not None:
+						clocks = self.selclocks[clock_types]
+					borderTopPix = self.borderSelectedTopPix
+					borderLeftPix = self.borderSelectedLeftPix
+					borderBottomPix = self.borderSelectedBottomPix
+					borderRightPix = self.borderSelectedRightPix
+					infoPix = self.selInfoPix
+					if stime <= now < (stime + duration) and config.epgselection.graph_highlight_current_events.value:
+						bgpng = self.nowSelEvPix
+					else:
+						bgpng = self.selEvPix
+				else:
+					if clock_types is not None:
+						clocks = self.clocks[clock_types]
+					borderTopPix = self.borderTopPix
+					borderLeftPix = self.borderLeftPix
+					borderBottomPix = self.borderBottomPix
+					borderRightPix = self.borderRightPix
+					infoPix = self.InfoPix
+					bgpng = self.othEvPix
 					if clock_types is not None and clock_types == 2:
-						foreColor = self.foreColorRecord
-						backColor = self.backColorRecord
-						foreColorSel = self.foreColorRecordSelected
-						backColorSel = self.backColorRecordSelected
+						bgpng = self.recEvPix
 					elif clock_types is not None and clock_types == 7:
-						foreColor = self.foreColorZap
-						backColor = self.backColorZap
-						foreColorSel = self.foreColorZapSelected
-						backColorSel = self.backColorZapSelected
+						bgpng = self.zapEvPix
 					elif stime <= now < (stime + duration) and config.epgselection.graph_highlight_current_events.value:
-						foreColor = self.foreColorNow
-						backColor = self.backColorNow
-						foreColorSel = self.foreColorNowSelected
-						backColorSel = self.backColorNowSelected
+						bgpng = self.nowEvPix
 
-					if selected and self.select_rect.left() == xpos + left:
-						if clock_types is not None:
-							clocks = self.selclocks[clock_types]
-						borderTopPix = self.borderSelectedTopPix
-						borderLeftPix = self.borderSelectedLeftPix
-						borderBottomPix = self.borderSelectedBottomPix
-						borderRightPix = self.borderSelectedRightPix
-						infoPix = self.selInfoPix
-						if stime <= now < (stime + duration) and config.epgselection.graph_highlight_current_events.value:
-							bgpng = self.nowSelEvPix
-						else:
-							bgpng = self.selEvPix
-					else:
-						if clock_types is not None:
-							clocks = self.clocks[clock_types]
-						borderTopPix = self.borderTopPix
-						borderLeftPix = self.borderLeftPix
-						borderBottomPix = self.borderBottomPix
-						borderRightPix = self.borderRightPix
-						infoPix = self.InfoPix
-						bgpng = self.othEvPix
-						if clock_types is not None and clock_types == 2:
-							bgpng = self.recEvPix
-						elif clock_types is not None and clock_types == 7:
-							bgpng = self.zapEvPix
-						elif stime <= now < (stime + duration) and config.epgselection.graph_highlight_current_events.value:
-							bgpng = self.nowEvPix
+				# event box background
+				if bgpng is not None and self.graphic:
+					backColor = None
+					backColorSel = None
+					res.append(MultiContentEntryPixmapAlphaTest(
+						pos = (left + xpos + self.eventBorderWidth, top + self.eventBorderWidth),
+						size = (ewidth - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
+						png = bgpng,
+						flags = BT_SCALE))
+				else:
+					res.append(MultiContentEntryText(
+						pos = (left + xpos, top), size = (ewidth, height),
+						font = 1, flags = RT_HALIGN_LEFT | RT_VALIGN_CENTER,
+						text = "", color = None, color_sel = None,
+						backcolor = backColor, backcolor_sel = backColorSel,
+						border_width = self.eventBorderWidth, border_color = self.borderColor))
 
-					# event box background
-					if bgpng is not None and self.graphic:
-						backColor = None
-						backColorSel = None
-						res.append(MultiContentEntryPixmapAlphaTest(
-							pos = (left + xpos + self.eventBorderWidth, top + self.eventBorderWidth),
-							size = (ewidth - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
-							png = bgpng,
+				# event text
+				evX = left + xpos + self.eventBorderWidth + self.eventNamePadding
+				evY = top + self.eventBorderWidth
+				evW = ewidth - 2 * (self.eventBorderWidth + self.eventNamePadding)
+				evH = height - 2 * self.eventBorderWidth
+				if self.type == EPG_TYPE_GRAPH:
+					infowidth = config.epgselection.graph_infowidth.value
+				elif self.type == EPG_TYPE_INFOBARGRAPH:
+					infowidth = config.epgselection.infobar_infowidth.value
+				if evW < infowidth and infoPix is not None:
+					res.append(MultiContentEntryPixmapAlphaBlend(
+						pos = (left + xpos + self.eventBorderWidth, evY), size = (ewidth - 2 * self.eventBorderWidth, evH),
+						png = infoPix, flags = BT_ALIGN_CENTER))
+				else:
+					res.append(MultiContentEntryText(
+						pos = (evX, evY), size = (evW, evH),
+						font = 1, flags = int(config.epgselection.graph_event_alignment.value),
+						text = ev[1],
+						color = foreColor, color_sel = foreColorSel,
+						backcolor = backColor, backcolor_sel = backColorSel))
+
+				# event box borders
+				if borderTopPix is not None and self.graphic:
+					res.append(MultiContentEntryPixmapAlphaTest(
+							pos = (left + xpos, top),
+							size = (ewidth, self.eventBorderWidth),
+							png = borderTopPix,
 							flags = BT_SCALE))
-					else:
-						res.append(MultiContentEntryText(
-							pos = (left + xpos, top), size = (ewidth, height),
-							font = 1, flags = RT_HALIGN_LEFT | RT_VALIGN_CENTER,
-							text = "", color = None, color_sel = None,
-							backcolor = backColor, backcolor_sel = backColorSel,
-							border_width = self.eventBorderWidth, border_color = self.borderColor))
+				if borderBottomPix is not None and self.graphic:
+					res.append(MultiContentEntryPixmapAlphaTest(
+							pos = (left + xpos, height-self.eventBorderWidth),
+							size = (ewidth, self.eventBorderWidth),
+							png = borderBottomPix,
+							flags = BT_SCALE))
+				if borderLeftPix is not None and self.graphic:
+					res.append(MultiContentEntryPixmapAlphaTest(
+							pos = (left + xpos, top),
+							size = (self.eventBorderWidth, height),
+							png = borderLeftPix,
+							flags = BT_SCALE))
+				if borderRightPix is not None and self.graphic:
+					res.append(MultiContentEntryPixmapAlphaTest(
+							pos = (left + xpos + ewidth-self.eventBorderWidth, top),
+							size = (self.eventBorderWidth, height),
+							png = borderRightPix,
+							flags = BT_SCALE))
 
-					# event text
-					evX = left + xpos + self.eventBorderWidth + self.eventNamePadding
-					evY = top + self.eventBorderWidth
-					evW = ewidth - 2 * (self.eventBorderWidth + self.eventNamePadding)
-					evH = height - 2 * self.eventBorderWidth
-					if self.type == EPG_TYPE_GRAPH:
-						infowidth = config.epgselection.graph_infowidth.value
-					elif self.type == EPG_TYPE_INFOBARGRAPH:
-						infowidth = config.epgselection.infobar_infowidth.value
-					if evW < infowidth and infoPix is not None:
-						res.append(MultiContentEntryPixmapAlphaBlend(
-							pos = (left + xpos + self.eventBorderWidth, evY), size = (ewidth - 2 * self.eventBorderWidth, evH),
-							png = infoPix, flags = BT_ALIGN_CENTER))
-					else:
-						res.append(MultiContentEntryText(
-							pos = (evX, evY), size = (evW, evH),
-							font = 1, flags = int(config.epgselection.graph_event_alignment.value),
-							text = ev[1],
-							color = foreColor, color_sel = foreColorSel,
-							backcolor = backColor, backcolor_sel = backColorSel))
-
-					# event box borders
-					if borderTopPix is not None and self.graphic:
-						res.append(MultiContentEntryPixmapAlphaTest(
-								pos = (left + xpos, top),
-								size = (ewidth, self.eventBorderWidth),
-								png = borderTopPix,
-								flags = BT_SCALE))
-					if borderBottomPix is not None and self.graphic:
-						res.append(MultiContentEntryPixmapAlphaTest(
-								pos = (left + xpos, height-self.eventBorderWidth),
-								size = (ewidth, self.eventBorderWidth),
-								png = borderBottomPix,
-								flags = BT_SCALE))
-					if borderLeftPix is not None and self.graphic:
-						res.append(MultiContentEntryPixmapAlphaTest(
-								pos = (left + xpos, top),
-								size = (self.eventBorderWidth, height),
-								png = borderLeftPix,
-								flags = BT_SCALE))
-					if borderRightPix is not None and self.graphic:
-						res.append(MultiContentEntryPixmapAlphaTest(
-								pos = (left + xpos + ewidth-self.eventBorderWidth, top),
-								size = (self.eventBorderWidth, height),
-								png = borderRightPix,
-								flags = BT_SCALE))
-
-					# recording icons
-					if clock_types is not None and ewidth > 23:
-						if config.epgselection.graph_rec_icon_height.value != "hide":
-							if config.epgselection.graph_rec_icon_height.value == "middle":
-								RecIconHDheight = top+(height/2)-11
-								RecIconFHDheight = top+(height/2)-13
-							elif config.epgselection.graph_rec_icon_height.value == "top":
-								RecIconHDheight = top+3
-								RecIconFHDheight = top+3
+				# recording icons
+				if clock_types is not None and ewidth > 23:
+					if config.epgselection.graph_rec_icon_height.value != "hide":
+						if config.epgselection.graph_rec_icon_height.value == "middle":
+							RecIconHDheight = top+(height/2)-11
+							RecIconFHDheight = top+(height/2)-13
+						elif config.epgselection.graph_rec_icon_height.value == "top":
+							RecIconHDheight = top+3
+							RecIconFHDheight = top+3
+						else:
+							RecIconHDheight = top+height-22
+							RecIconFHDheight = top+height-26
+						if clock_types in (1,6,11):
+							if self.screenwidth == 1920:
+								pos = (left+xpos+ewidth-15, RecIconFHDheight)
 							else:
-								RecIconHDheight = top+height-22
-								RecIconFHDheight = top+height-26
-							if clock_types in (1,6,11):
-								if self.screenwidth and self.screenwidth == 1920:
-									pos = (left+xpos+ewidth-15, RecIconFHDheight)
-								else:
-									pos = (left+xpos+ewidth-13, RecIconHDheight)
-							elif clock_types in (5,10,15):
-								if self.screenwidth and self.screenwidth == 1920:
-									pos = (left+xpos-26, RecIconFHDheight)
-								else:
-									pos = (left+xpos-22, RecIconHDheight)
+								pos = (left+xpos+ewidth-13, RecIconHDheight)
+						elif clock_types in (5,10,15):
+							if self.screenwidth == 1920:
+								pos = (left+xpos-26, RecIconFHDheight)
 							else:
-								if self.screenwidth and self.screenwidth == 1920:
-									pos = (left+xpos+ewidth-26, RecIconFHDheight)
-								else:
-									pos = (left+xpos+ewidth-22, RecIconHDheight)
-							if self.screenwidth and self.screenwidth == 1920:
+								pos = (left+xpos-22, RecIconHDheight)
+						else:
+							if self.screenwidth == 1920:
+								pos = (left+xpos+ewidth-26, RecIconFHDheight)
+							else:
+								pos = (left+xpos+ewidth-22, RecIconHDheight)
+						if self.screenwidth == 1920:
+							res.append(MultiContentEntryPixmapAlphaBlend(
+								pos = pos, size = (25, 25),
+								png = clocks))
+						else:
+							res.append(MultiContentEntryPixmapAlphaBlend(
+								pos = pos, size = (21, 21),
+								png = clocks))
+						if self.wasEntryAutoTimer and clock_types in (2,7,12):
+							if self.screenwidth == 1920:
 								res.append(MultiContentEntryPixmapAlphaBlend(
-									pos = pos, size = (25, 25),
-									png = clocks))
+									pos = (pos[0]-25,pos[1]), size = (25, 25),
+									png = self.autotimericon))
 							else:
 								res.append(MultiContentEntryPixmapAlphaBlend(
-									pos = pos, size = (21, 21),
-									png = clocks))
-							if self.wasEntryAutoTimer and clock_types in (2,7,12):
-								if self.screenwidth and self.screenwidth == 1920:
-									res.append(MultiContentEntryPixmapAlphaBlend(
-										pos = (pos[0]-25,pos[1]), size = (25, 25),
-										png = self.autotimericon))
-								else:
-									res.append(MultiContentEntryPixmapAlphaBlend(
-										pos = (pos[0]-21,pos[1]), size = (21, 21),
-										png = self.autotimericon))
-			return res
-		except Exception as e:
-			print e
+									pos = (pos[0]-21,pos[1]), size = (21, 21),
+									png = self.autotimericon))
+		return res
 
 	def getSelectionPosition(self,serviceref):
 		selx = self.select_rect.left()+self.select_rect.width()
@@ -621,7 +767,6 @@ class EPGListGraph(EPGListBase):
 		if int(sely) >= temp:
 			sely = int(sely) - int(self.listHeight)
 		return int(selx), int(sely)
-
 
 	# This method function is a little odd...
 	# When it is called with a non-zero dir it runs through the code in the

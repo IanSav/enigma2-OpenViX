@@ -1,5 +1,3 @@
-from time import localtime, time, strftime, mktime
-
 from enigma import eServiceReference, eTimer, eServiceCenter, ePoint
 
 from Screens.Screen import Screen
@@ -7,8 +5,8 @@ from Screens.HelpMenu import HelpableScreen
 from Components.ActionMap import HelpableActionMap, HelpableNumberActionMap
 from Components.Button import Button
 from Components.config import config, configfile
-from Components.EpgList import EPGList, EPG_TYPE_SINGLE, EPG_TYPE_SIMILAR, EPG_TYPE_MULTI, EPG_TYPE_ENHANCED, EPG_TYPE_INFOBAR, EPG_TYPE_GRAPH, EPG_TYPE_INFOBARGRAPH
-from Components.EpgBouquetList import EPGBouquetList
+from Components.Epg.EpgListBase import EPG_TYPE_SINGLE, EPG_TYPE_SIMILAR, EPG_TYPE_MULTI, EPG_TYPE_ENHANCED, EPG_TYPE_INFOBAR, EPG_TYPE_GRAPH, EPG_TYPE_INFOBARGRAPH
+from Components.Epg.EpgBouquetList import EPGBouquetList
 from Components.Label import Label
 from Components.Sources.ServiceEvent import ServiceEvent
 from Components.Sources.Event import Event
@@ -504,55 +502,13 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		from Screens.InfoBar import InfoBar
 		InfoBarInstance = InfoBar.instance
 		if not InfoBarInstance.LongButtonPressed:
-			if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_info.value == 'Channel Info':
-				self.infoKeyPressed()
-			elif self.type == EPG_TYPE_GRAPH and config.epgselection.graph_info.value == 'Single EPG':
-				self.openSingleEPG()
-			else:
-				self.infoKeyPressed()
+			self.infoKeyPressed()
 
 	def InfoLong(self):
 		from Screens.InfoBar import InfoBar
 		InfoBarInstance = InfoBar.instance
 		if InfoBarInstance.LongButtonPressed:
-			if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_infolong.value == 'Channel Info':
-				self.infoKeyPressed()
-			elif self.type == EPG_TYPE_GRAPH and config.epgselection.graph_infolong.value == 'Single EPG':
-				self.openSingleEPG()
-			else:
-				self.openSingleEPG()
-
-	def applyButtonState(self, state):
-		if state == 0:
-			self['now_button'].hide()
-			self['now_button_sel'].hide()
-			self['next_button'].hide()
-			self['next_button_sel'].hide()
-			self['more_button'].hide()
-			self['more_button_sel'].hide()
-			self['now_text'].hide()
-			self['next_text'].hide()
-			self['more_text'].hide()
-			self['key_red'].setText('')
-		else:
-			if state == 1:
-				self['now_button_sel'].show()
-				self['now_button'].hide()
-			else:
-				self['now_button'].show()
-				self['now_button_sel'].hide()
-			if state == 2:
-				self['next_button_sel'].show()
-				self['next_button'].hide()
-			else:
-				self['next_button'].show()
-				self['next_button_sel'].hide()
-			if state == 3:
-				self['more_button_sel'].show()
-				self['more_button'].hide()
-			else:
-				self['more_button'].show()
-				self['more_button_sel'].hide()
+			self.openSingleEPG()
 
 	def onSelectionChanged(self):
 		cur = self['list'].getCurrent()
@@ -562,27 +518,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			self['Service'].newService(None)
 		else:
 			self['Service'].newService(cur[1].ref)
-		if self.type == EPG_TYPE_MULTI:
-			count = self['list'].getCurrentChangeCount()
-			if self.ask_time != -1:
-				self.applyButtonState(0)
-			elif count > 1:
-				self.applyButtonState(3)
-			elif count > 0:
-				self.applyButtonState(2)
-			else:
-				self.applyButtonState(1)
-			datestr = ''
-			if event is not None:
-				now = time()
-				beg = event.getBeginTime()
-				nowTime = localtime(now)
-				begTime = localtime(beg)
-				if nowTime[2] != begTime[2]:
-					datestr = strftime(config.usage.date.dayshort.value, begTime)
-				else:
-					datestr = '%s' % _('Today')
-			self['date'].setText(datestr)
 		if cur[1] is None or cur[1].getServiceName() == '':
 			if self.key_green_choice != self.EMPTY:
 				self['key_green'].setText('')
@@ -659,8 +594,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		else:
 			self.prevch = self.session.nav.getCurrentlyPlayingServiceReference() and str(self.session.nav.getCurrentlyPlayingServiceReference().toString()) or None
 		lst = self["list"]
-		count = lst.getCurrentChangeCount()
-		if count == 0:
+		if type != EPG_TYPE_MULTI or lst.getCurrentChangeCount() == 0:
 			ref = lst.getCurrent()[1]
 			if ref is not None:
 				if (self.type == EPG_TYPE_INFOBAR or self.type == EPG_TYPE_INFOBARGRAPH) and config.epgselection.infobar_preview_mode.value == '2':
@@ -709,9 +643,8 @@ class EPGSelectionBase(Screen, HelpableScreen):
 				self.closeEventViewDialog()
 				self.close()
 
-class EPGNumberZap:
+class EPGServiceNumberSelection:
 	def __init__(self):
-		print "[EPGNumberZap] init"
 		self.zapNumberStarted = False
 		self.numberZapTimer = eTimer()
 		self.numberZapTimer.callback.append(self.doNumberZap)
@@ -777,9 +710,8 @@ class EPGNumberZap:
 		self.__cancel()
 
 	def handleServiceName(self):
-		if self.searchNumber:
-			self.service, self.bouquet = self.searchNumber(int(self.numberZapField))
-			self.zaptoservicename = ServiceReference(self.service).getServiceName()
+		self.service, self.bouquet = self.searchNumber(int(self.numberZapField))
+		self.zaptoservicename = ServiceReference(self.service).getServiceName()
 
 	def zapToNumber(self, service, bouquet):
 		self.CurrBouquet = bouquet
@@ -824,15 +756,14 @@ class EPGNumberZap:
 
 class EPGBouquetSelection:
 	def __init__(self, graphic):
-		print "[EPGBouquetSelection]"
 		self['bouquetlist'] = EPGBouquetList(graphic)
 		self['bouquetlist'].hide()
 		self.bouquetlist_active = False
 
 		self['bouquetokactions'] = HelpableActionMap(self, 'OkCancelActions',
 			{
-				'cancel': (self.BouquetlistHide, _('Close bouquet list.')),
-				'OK': (self.BouquetOK, _('Change to bouquet')),
+				'cancel': (self.bouquetListHide, _('Close bouquet list.')),
+				'OK': (self.bouquetListOK, _('Change to bouquet')),
 			}, -1)
 		self['bouquetokactions'].csel = self
 		self["bouquetokactions"].setEnabled(False)
@@ -855,11 +786,16 @@ class EPGBouquetSelection:
 		self.setTitle(self['bouquetlist'].getCurrentBouquet())
 		self.services = self.getBouquetServices(self.startBouquet)
 
-	def Bouquetlist(self):
+	def bouquetList(self):
 		if not self.bouquetlist_active:
 			self.bouquetListShow()
 		else:
 			self.bouquetListHide()
+			self['bouquetlist'].setCurrentIndex(self.curindex)
+
+	def bouquetListOK(self):
+		self.bouquetChanged()
+		self.bouquetListHide()
 
 	def bouquetListShow(self):
 		self.curindex = self['bouquetlist'].l.getCurrentSelectionIndex()
@@ -870,12 +806,10 @@ class EPGBouquetSelection:
 		self['bouquetcursoractions'].setEnabled(True)
 		self.bouquetlist_active = True
 
-	def bouquetListHide(self, cancel=True):
+	def bouquetListHide(self):
 		self['bouquetokactions'].setEnabled(False)
 		self['bouquetcursoractions'].setEnabled(False)
 		self['bouquetlist'].hide()
-		if cancel:
-			self['bouquetlist'].setCurrentIndex(self.curindex)
 		self['okactions'].setEnabled(True)
 		self['epgcursoractions'].setEnabled(True)
 		self.bouquetlist_active = False

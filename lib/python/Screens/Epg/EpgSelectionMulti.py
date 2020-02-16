@@ -1,9 +1,9 @@
-from time import time
+from time import localtime, time, strftime
 
 from Components.ActionMap import HelpableActionMap
 from Components.config import config, ConfigClock
-from Components.EpgListMulti import EPGListMulti
-from Components.EpgListBase import EPG_TYPE_MULTI
+from Components.Epg.EpgListMulti import EPGListMulti
+from Components.Epg.EpgListBase import EPG_TYPE_MULTI
 from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
 from Components.Label import Label
 from Components.Pixmap import Pixmap
@@ -51,7 +51,7 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
 				'info': (self.Info, _('Show detailed event info')),
 				'infolong': (self.InfoLong, _('Show single epg for current channel')),
-				'tv': (self.Bouquetlist, _('Toggle between bouquet/epg lists')),
+				'tv': (self.bouquetList, _('Toggle between bouquet/epg lists')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
 		self['epgactions'].csel = self
@@ -76,37 +76,36 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 	def loadEPGData(self):
 		self._populateBouquetList()
 		serviceref = self.session.nav.getCurrentlyPlayingServiceOrGroup()
-		self['list'].fillMultiEPG(self.services, self.ask_time)
+		self['list'].fillEPG(self.services, self.ask_time)
 		self['list'].moveToService(serviceref)
 		self['list'].setCurrentlyPlaying(serviceref)
 		self['lab1'].hide()
 
 	def refreshlist(self):
 		self.refreshTimer.stop()
-		self['list'].fillMultiEPG(self.services, self.ask_time)
+		self['list'].fillEPG(self.services, self.ask_time)
 
 	def leftPressed(self):
-		self['list'].updateMultiEPG(-1)
+		self['list'].updateEPG(-1)
 
 	def rightPressed(self):
-		self['list'].updateMultiEPG(1)
+		self['list'].updateEPG(1)
 
-	def BouquetOK(self):
+	def bouquetChanged(self):
 		self.BouquetRoot = False
 		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
-		self['list'].fillMultiEPG(self.services, self.ask_time)
+		self['list'].fillEPG(self.services, self.ask_time)
 		self['list'].instance.moveSelectionTo(0)
 		self.setTitle(self['bouquetlist'].getCurrentBouquet())
-		self.BouquetlistHide(False)
 
 	def nextBouquet(self):
 		self.moveBouquetDown()
-		self.BouquetOK()
+		self.bouquetChanged()
 
 	def prevBouquet(self):
 		self.moveBouquetUp()
-		self.BouquetOK()
+		self.bouquetChanged()
 
 	def nextService(self):
 		if self.serviceChangeCB:
@@ -130,7 +129,7 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 		if len(ret) > 1:
 			if ret[0]:
 				self.ask_time = ret[1]
-				self['list'].fillMultiEPG(self.services, self.ask_time)
+				self['list'].fillEPG(self.services, self.ask_time)
 
 	def infoKeyPressed(self, eventviewopen=False):
 		cur = self['list'].getCurrent()
@@ -156,3 +155,60 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 		else:
 			setService(cur[1])
 			setEvent(cur[0])
+
+	def applyButtonState(self, state):
+		if state == 0:
+			self['now_button'].hide()
+			self['now_button_sel'].hide()
+			self['next_button'].hide()
+			self['next_button_sel'].hide()
+			self['more_button'].hide()
+			self['more_button_sel'].hide()
+			self['now_text'].hide()
+			self['next_text'].hide()
+			self['more_text'].hide()
+			self['key_red'].setText('')
+		else:
+			if state == 1:
+				self['now_button_sel'].show()
+				self['now_button'].hide()
+			else:
+				self['now_button'].show()
+				self['now_button_sel'].hide()
+			if state == 2:
+				self['next_button_sel'].show()
+				self['next_button'].hide()
+			else:
+				self['next_button'].show()
+				self['next_button_sel'].hide()
+			if state == 3:
+				self['more_button_sel'].show()
+				self['more_button'].hide()
+			else:
+				self['more_button'].show()
+				self['more_button_sel'].hide()
+
+	def onSelectionChanged(self):
+		count = self['list'].getCurrentChangeCount()
+		if self.ask_time != -1:
+			self.applyButtonState(0)
+		elif count > 1:
+			self.applyButtonState(3)
+		elif count > 0:
+			self.applyButtonState(2)
+		else:
+			self.applyButtonState(1)
+		datestr = ''
+		cur = self['list'].getCurrent()
+		event = cur[0]
+		if event is not None:
+			now = time()
+			beg = event.getBeginTime()
+			nowTime = localtime(now)
+			begTime = localtime(beg)
+			if nowTime[2] != begTime[2]:
+				datestr = strftime(config.usage.date.dayshort.value, begTime)
+			else:
+				datestr = '%s' % _('Today')
+		self['date'].setText(datestr)
+		EPGSelectionBase.onSelectionChanged(self)

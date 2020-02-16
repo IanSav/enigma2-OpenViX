@@ -7,7 +7,7 @@ from Components.About import about
 from Components.ActionMap import HelpableActionMap, HelpableNumberActionMap
 from Components.Button import Button
 from Components.config import config, configfile, ConfigClock
-from Components.EpgListGraph import EPGListGraph, TimelineText, EPG_TYPE_INFOBARGRAPH, EPG_TYPE_GRAPH, MAX_TIMELINES
+from Components.Epg.EpgListGraph import EPGListGraph, TimelineText, EPG_TYPE_INFOBARGRAPH, EPG_TYPE_GRAPH, MAX_TIMELINES
 from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
 from Components.Label import Label
 from Components.Pixmap import Pixmap
@@ -92,7 +92,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
 				'info': (self.Info, _('Show detailed event info')),
 				'infolong': (self.InfoLong, _('Show single epg for current channel')),
-				'tv': (self.Bouquetlist, _('Toggle between bouquet/epg lists')),
+				'tv': (self.bouquetlist, _('Toggle between bouquet/epg lists')),
 				'tvlong': (self.togglePIG, _('Toggle picture In graphics')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
@@ -185,7 +185,29 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 	def rightPressed(self):
 		self.updEvent(+1)
 
-	def BouquetOK(self):
+	def Info(self):
+		from Screens.InfoBar import InfoBar
+		InfoBarInstance = InfoBar.instance
+		if not InfoBarInstance.LongButtonPressed:
+			if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_info.value == 'Channel Info':
+				self.infoKeyPressed()
+			elif self.type == EPG_TYPE_GRAPH and config.epgselection.graph_info.value == 'Single EPG':
+				self.openSingleEPG()
+			else:
+				self.infoKeyPressed()
+
+	def InfoLong(self):
+		from Screens.InfoBar import InfoBar
+		InfoBarInstance = InfoBar.instance
+		if InfoBarInstance.LongButtonPressed:
+			if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_infolong.value == 'Channel Info':
+				self.infoKeyPressed()
+			elif self.type == EPG_TYPE_GRAPH and config.epgselection.graph_infolong.value == 'Single EPG':
+				self.openSingleEPG()
+			else:
+				self.openSingleEPG()
+
+	def bouquetChanged(self):
 		self.BouquetRoot = False
 		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
@@ -198,15 +220,14 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.moveTimeLines(True)
 		self['list'].instance.moveSelectionTo(0)
 		self.setTitle(self['bouquetlist'].getCurrentBouquet())
-		self.BouquetlistHide(False)
 
 	def nextBouquet(self):
 		self.moveBouquetDown()
-		self.BouquetOK()
+		self.bouquetChanged()
 
 	def prevBouquet(self):
 		self.moveBouquetUp()
-		self.BouquetOK()
+		self.bouquetChanged()
 
 	def nextService(self):
 		self.updEvent(+24)

@@ -1,7 +1,7 @@
 from Components.ActionMap import HelpableActionMap
 from Components.config import config, configfile
-from Components.EpgListOther import EPGListOther
-from Components.EpgListBase import EPG_TYPE_SINGLE
+from Components.Epg.EpgListSingle import EPGListSingle
+from Components.Epg.EpgListBase import EPG_TYPE_SINGLE
 from EpgSelectionBase import EPGSelectionBase
 from Screens.EventView import EventViewEPGSelect
 from Screens.Setup import Setup
@@ -30,7 +30,9 @@ class EPGSelectionSingle(EPGSelectionBase):
 			}, -1)
 		self['epgcursoractions'].csel = self
 
-		self['list'] = EPGListOther(type=self.type, selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer)
+		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
+			itemsPerPageConfig = config.epgselection.enhanced_itemsperpage,
+			eventfsConfig = config.epgselection.enhanced_eventfs)
 
 	def createSetup(self):
 		self.closeEventViewDialog()
@@ -48,8 +50,8 @@ class EPGSelectionSingle(EPGSelectionBase):
 		self['Service'].newService(service.ref)
 		title = service.getServiceName()
 		self.setTitle(title)
-		self['list'].fillSingleEPG(service)
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].fillEPG(service)
+		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self['lab1'].show()
 		self.show()
 
@@ -65,8 +67,8 @@ class EPGSelectionSingle(EPGSelectionBase):
 			else:
 				index = self.cureventindex
 				self.cureventindex = None
-			self['list'].fillSingleEPG(service)
-			self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+			self['list'].fillEPG(service)
+			self['list'].sortEPG(int(config.epgselection.sort.value))
 			self['list'].setCurrentIndex(index)
 		except:
 			pass

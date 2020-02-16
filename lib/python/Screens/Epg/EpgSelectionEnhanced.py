@@ -7,18 +7,18 @@ from Components.About import about
 from Components.ActionMap import HelpableActionMap, HelpableNumberActionMap
 from Components.Button import Button
 from Components.config import config, configfile, ConfigClock
-from Components.EpgListOther import EPGListOther
-from Components.EpgListBase import EPG_TYPE_ENHANCED
-from EpgSelectionBase import EPGSelectionBase, EPGNumberZap
+from Components.Epg.EpgListSingle import EPGListSingle
+from Components.Epg.EpgListBase import EPG_TYPE_ENHANCED
+from EpgSelectionBase import EPGSelectionBase, EPGServiceNumberSelection
 from Screens.EventView import EventViewEPGSelect
 from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
-class EPGSelectionEnhanced(EPGSelectionBase, EPGNumberZap):
+class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
 		print "[EPGSelectionEnhanced]"
 		EPGSelectionBase.__init__(self, EPG_TYPE_ENHANCED, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
-		EPGNumberZap.__init__(self)
+		EPGServiceNumberSelection.__init__(self)
 
 		self.skinName = 'EPGSelection'
 
@@ -46,7 +46,9 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGNumberZap):
 		self.servicelist = servicelist
 		self.currentService = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 
-		self['list'] = EPGListOther(type=self.type, selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer)
+		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
+			itemsPerPageConfig = config.epgselection.enhanced_itemsperpage,
+			eventfsConfig = config.epgselection.enhanced_eventfs)
 
 	def createSetup(self):
 		self.closeEventViewDialog()
@@ -64,8 +66,8 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGNumberZap):
 		self['Service'].newService(service.ref)
 		title = ServiceReference(self.servicelist.getRoot()).getServiceName() + ' - ' + service.getServiceName()
 		self.setTitle(title)
-		self['list'].fillSingleEPG(service)
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].fillEPG(service)
+		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self.show()
 
 	def loadEPGData(self):
@@ -80,8 +82,8 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGNumberZap):
 			else:
 				index = self.cureventindex
 				self.cureventindex = None
-			self['list'].fillSingleEPG(service)
-			self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+			self['list'].fillEPG(service)
+			self['list'].sortEPG(int(config.epgselection.sort.value))
 			self['list'].setCurrentIndex(index)
 		except:
 			pass

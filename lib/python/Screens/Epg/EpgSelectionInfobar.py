@@ -2,8 +2,8 @@ from enigma import eServiceReference
 
 from Components.ActionMap import HelpableActionMap
 from Components.config import config, configfile
-from Components.EpgListOther import EPGListOther
-from Components.EpgListBase import EPG_TYPE_INFOBAR
+from Components.Epg.EpgListSingle import EPGListSingle
+from Components.Epg.EpgListBase import EPG_TYPE_INFOBAR
 from EpgSelectionBase import EPGSelectionBase
 from Components.Sources.Event import Event
 from Screens.EventView import EventViewEPGSelect, EventViewSimple
@@ -46,7 +46,9 @@ class EPGSelectionInfobar(EPGSelectionBase):
 		self.servicelist = servicelist
 		self.currentService = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 
-		self['list'] = EPGListOther(type=self.type, selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer)
+		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
+			itemsPerPageConfig = config.epgselection.infobar_itemsperpage,
+			eventfsConfig = config.epgselection.infobar_eventfs)
 
 	def createSetup(self):
 		self.closeEventViewDialog()
@@ -65,8 +67,8 @@ class EPGSelectionInfobar(EPGSelectionBase):
 		else:
 			title = service.getServiceName()
 		self.setTitle(title)
-		self['list'].fillSingleEPG(service)
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].fillEPG(service)
+		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self['lab1'].show()
 		self.show()
 
@@ -79,19 +81,19 @@ class EPGSelectionInfobar(EPGSelectionBase):
 			else:
 				index = self.cureventindex
 				self.cureventindex = None
-			self['list'].fillSingleEPG(service)
-			self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+			self['list'].fillEPG(service)
+			self['list'].sortEPG(int(config.epgselection.sort.value))
 			self['list'].setCurrentIndex(index)
 		except:
 			pass
 
-	def BouquetOK(self):
+	def bouquetChanged(self):
 		self.BouquetRoot = False
 		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
 		self['list'].instance.moveSelectionTo(0)
 		self.setTitle(self['bouquetlist'].getCurrentBouquet())
-		self.BouquetlistHide(False)
+		self.bouquetListHide()
 
 	def nextBouquet(self):
 		if config.usage.multibouquet.value:
