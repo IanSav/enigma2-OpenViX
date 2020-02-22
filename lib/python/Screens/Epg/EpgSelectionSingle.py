@@ -39,7 +39,7 @@ class EPGSelectionSingle(EPGSelectionBase):
 		self.session.openWithCallback(self.onSetupClose, Setup, 'epgsingle')
 
 	def onSetupClose(self, test = None):
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self['list'].setFontsize()
 		self['list'].setItemsPerPage()
 		self['list'].recalcEntrySize()
@@ -54,9 +54,6 @@ class EPGSelectionSingle(EPGSelectionBase):
 		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self['lab1'].show()
 		self.show()
-
-	def loadEPGData(self):
-		pass
 
 	def refreshlist(self):
 		self.refreshTimer.stop()
@@ -102,7 +99,7 @@ class EPGSelectionSingle(EPGSelectionBase):
 			config.epgselection.sort.setValue('0')
 		config.epgselection.sort.save()
 		configfile.save()
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].sortEPG(int(config.epgselection.sort.value))
 
 	def closeScreen(self):
 		self.close()

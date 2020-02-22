@@ -71,6 +71,8 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 		self['list'].recalcEntrySize()
 		self['lab1'].show()
 		self.show()
+		self.listTimer = eTimer()
+		self.listTimer.callback.append(self.loadEPGData)
 		self.listTimer.start(1, True)
 
 	def loadEPGData(self):

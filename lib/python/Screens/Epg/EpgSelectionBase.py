@@ -70,6 +70,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self['Service'] = ServiceEvent()
 		self['Event'] = Event()
 		self['lab1'] = Label(_('Please wait while gathering EPG data...'))
+		self['lab1'].hide()
 		self.key_green_choice = self.EMPTY
 		self['key_red'] = Button(_('IMDb search'))
 		self['key_green'] = Button(_('Add timer'))
@@ -109,8 +110,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 
 		self.refreshTimer = eTimer()
 		self.refreshTimer.timeout.get().append(self.refreshlist)
-		self.listTimer = eTimer()
-		self.listTimer.callback.append(self.loadEPGData)
 		self.onLayoutFinish.append(self.onCreate)
 
 	def getBouquetServices(self, bouquet):

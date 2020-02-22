@@ -24,7 +24,7 @@ SECS_IN_MIN = 60
 class EPGListGraph(EPGListBase):
 	def __init__(self, type, selChangedCB = None, timer = None, graphic=True):
 		print "[EPGListGraph] Init"
-		EPGListBase.__init__(self, type, selChangedCB, timer)
+		EPGListBase.__init__(self, selChangedCB, timer)
 
 		self.time_focus = time() # default to now
 		self.cur_event = None

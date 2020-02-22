@@ -29,9 +29,6 @@ class EPGSelectionSimilar(EPGSelectionBase):
 		self['lab1'].show()
 		self.show()
 
-	def loadEPGData(self):
-		pass
-
 	def refreshlist(self):
 		self.refreshTimer.stop()
 

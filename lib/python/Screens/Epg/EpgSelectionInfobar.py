@@ -11,11 +11,6 @@ from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
 class EPGSelectionInfobar(EPGSelectionBase):
-	EMPTY = 0
-	ADD_TIMER = 1
-	REMOVE_TIMER = 2
-	ZAP = 1
-
 	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, StartBouquet = None, StartRef = None, bouquets = None):
 		print "[EPGSelectionInfobar]"
 		EPGSelectionBase.__init__(self, EPG_TYPE_INFOBAR, session, zapFunc, bouquetChangeCB, serviceChangeCB, StartBouquet, StartRef, bouquets)
@@ -196,4 +191,4 @@ class EPGSelectionInfobar(EPGSelectionBase):
 			config.epgselection.sort.setValue('0')
 		config.epgselection.sort.save()
 		configfile.save()
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].sortEPG(int(config.epgselection.sort.value))

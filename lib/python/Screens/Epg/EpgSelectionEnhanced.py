@@ -55,7 +55,7 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 		self.session.openWithCallback(self.onSetupClose, Setup, 'epgenhanced')
 
 	def onSetupClose(self, test = None):
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self['list'].setFontsize()
 		self['list'].setItemsPerPage()
 		self['list'].recalcEntrySize()
@@ -70,9 +70,6 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self.show()
 
-	def loadEPGData(self):
-		pass
-		
 	def refreshlist(self):
 		self.refreshTimer.stop()
 		try:
@@ -183,4 +180,4 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 			config.epgselection.sort.setValue('0')
 		config.epgselection.sort.save()
 		configfile.save()
-		self['list'].sortSingleEPG(int(config.epgselection.sort.value))
+		self['list'].sortEPG(int(config.epgselection.sort.value))

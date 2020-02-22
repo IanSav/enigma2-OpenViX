@@ -28,13 +28,9 @@ from ServiceReference import ServiceReference
 SECS_IN_MIN = 60
 
 class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
-	EMPTY = 0
-	ADD_TIMER = 1
-	REMOVE_TIMER = 2
-	ZAP = 1
-
 	def __init__(self, session, EPGtype = 'graph', zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
 		print "[EPGSelectionGraph]"
+
 		if EPGtype == 'graph':
 			type = EPG_TYPE_GRAPH
 		else:
@@ -92,7 +88,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
 				'info': (self.Info, _('Show detailed event info')),
 				'infolong': (self.InfoLong, _('Show single epg for current channel')),
-				'tv': (self.bouquetlist, _('Toggle between bouquet/epg lists')),
+				'tv': (self.bouquetList, _('Toggle between bouquet/epg lists')),
 				'tvlong': (self.togglePIG, _('Toggle picture In graphics')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
@@ -139,6 +135,8 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self['timeline_text'].setEntries(self['list'], self['timeline_now'], self.time_lines, False)
 		self['lab1'].show()
 		self.show()
+		self.listTimer = eTimer()
+		self.listTimer.callback.append(self.loadEPGData)
 		self.listTimer.start(1, True)
 
 	def loadEPGData(self):
