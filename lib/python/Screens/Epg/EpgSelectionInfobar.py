@@ -11,9 +11,9 @@ from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
 class EPGSelectionInfobar(EPGSelectionBase):
-	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, StartBouquet = None, StartRef = None, bouquets = None):
-		print "[EPGSelectionInfobar]"
-		EPGSelectionBase.__init__(self, EPG_TYPE_INFOBAR, session, zapFunc, bouquetChangeCB, serviceChangeCB, StartBouquet, StartRef, bouquets)
+	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
+		print "[EPGSelectionInfobar] ------- NEW VERSION -------"
+		EPGSelectionBase.__init__(self, EPG_TYPE_INFOBAR, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
 
 		self.skinName = 'QuickEPG'
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',

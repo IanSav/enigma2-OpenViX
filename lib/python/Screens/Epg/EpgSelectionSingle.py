@@ -8,8 +8,8 @@ from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
 class EPGSelectionSingle(EPGSelectionBase):
-	def __init__(self, session, service):
-		print "[EPGSelectionSingle]"
+	def __init__(self, session, service, time_focus = None):
+		print "[EPGSelectionSingle] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_SINGLE, session)
 
 		self.skinName = 'EPGSelection'
@@ -32,7 +32,8 @@ class EPGSelectionSingle(EPGSelectionBase):
 
 		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
 			itemsPerPageConfig = config.epgselection.enhanced_itemsperpage,
-			eventfsConfig = config.epgselection.enhanced_eventfs)
+			eventfsConfig = config.epgselection.enhanced_eventfs,
+			time_focus = time_focus)
 
 	def createSetup(self):
 		self.closeEventViewDialog()
@@ -52,7 +53,6 @@ class EPGSelectionSingle(EPGSelectionBase):
 		self.setTitle(title)
 		self['list'].fillEPG(service)
 		self['list'].sortEPG(int(config.epgselection.sort.value))
-		self['lab1'].show()
 		self.show()
 
 	def refreshlist(self):

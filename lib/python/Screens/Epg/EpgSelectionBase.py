@@ -214,12 +214,13 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.infoKeyPressed()
 
 	def openSingleEPG(self):
+		from Screens.Epg.EpgSelectionSingle import EPGSelectionSingle
 		cur = self['list'].getCurrent()
 		if cur[0] is not None:
 			event = cur[0]
 			serviceref = cur[1].ref
 			if serviceref is not None:
-				self.session.open(EPGSelectionSingle, serviceref)
+				self.session.open(EPGSelectionSingle, serviceref, event.getBeginTime())
 
 	def openIMDb(self):
 		try:

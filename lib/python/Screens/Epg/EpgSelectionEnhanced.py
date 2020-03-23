@@ -15,8 +15,8 @@ from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
 class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
-	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
-		print "[EPGSelectionEnhanced]"
+	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB = None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
+		print "[EPGSelectionEnhanced] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_ENHANCED, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
 		EPGServiceNumberSelection.__init__(self)
 

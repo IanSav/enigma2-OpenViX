@@ -6,7 +6,7 @@ from EpgSelectionBase import EPGSelectionBase
 
 class EPGSelectionSimilar(EPGSelectionBase):
 	def __init__(self, session, service, eventid):
-		print "[EPGSelectionSimilar]"
+		print "[EPGSelectionSimilar] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_SIMILAR, session)
 
 		self.currentService = service

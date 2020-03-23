@@ -14,10 +14,11 @@ from EpgListBase import EPGListBase
 SECS_IN_MIN = 60
 
 class EPGListSingle(EPGListBase):
-	def __init__(self, itemsPerPageConfig, eventfsConfig, selChangedCB = None, timer = None, time_epoch = 120, overjump_empty = False, graphic=False):
+	def __init__(self, itemsPerPageConfig, eventfsConfig, selChangedCB = None, timer = None, time_epoch = 120, overjump_empty = False, graphic=False, time_focus = None):
 		print "[EPGListSingle] Init"
 		EPGListBase.__init__(self, selChangedCB, timer)
 
+		self.time_focus = time_focus or time()
 		self.itemsPerPageConfig = itemsPerPageConfig
 		self.eventfsConfig =  eventfsConfig
 		self.eventFontName = "Regular"
@@ -191,14 +192,13 @@ class EPGListSingle(EPGListBase):
 				self.list.insert(i, (self.list[i][0], None, prev_end, this_beg - prev_end, None))
 		self.l.setList(self.list)
 		self.recalcEntrySize()
-		if t != epg_time:
-			idx = 0
-			for x in self.list:
-				idx += 1
-				if t < x[2]+x[3]:
-					break
-			self.instance.moveSelectionTo(idx-1)
-		self.selectionChanged()
+		# select the event that contains the requested 
+		idx = 0
+		for x in self.list:
+			if self.time_focus < x[2]+x[3]:
+				self.instance.moveSelectionTo(idx)
+				break
+			idx += 1
 
 	def sortEPG(self, type):
 		list = self.list

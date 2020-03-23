@@ -1,4 +1,5 @@
 from time import localtime, time, strftime
+from enigma import eTimer
 
 from Components.ActionMap import HelpableActionMap
 from Components.config import config, ConfigClock
@@ -8,6 +9,7 @@ from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
 from Components.Label import Label
 from Components.Pixmap import Pixmap
 from Screens.EventView import EventViewEPGSelect
+from Screens.Setup import Setup
 from Screens.TimeDateInput import TimeDateInput
 
 # Various value are in minutes, while others are in seconds.
@@ -16,7 +18,7 @@ SECS_IN_MIN = 60
 
 class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 	def __init__(self, session, zapFunc, startBouquet, startRef, bouquets):
-		print "[EPGSelectionMulti]"
+		print "[EPGSelectionMulti] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_MULTI, session, zapFunc, None, None, startBouquet, startRef, bouquets)
 		EPGBouquetSelection.__init__(self, False)
 
