@@ -28,8 +28,12 @@ from ServiceReference import ServiceReference
 SECS_IN_MIN = 60
 
 class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
+	# InfobarGraph and Graph EPGs are use separately named but otherwise identical configuration
+	def __config(self, name):
+		return config.epgselection.dict()[('graph' if self.type == EPG_TYPE_GRAPH else 'infobar') + '_' + name]
+
 	def __init__(self, session, EPGtype = 'graph', zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
-		print "[EPGSelectionGraph]"
+		print "[EPGSelectionGraph] ------- NEW VERSION -------"
 
 		if EPGtype == 'graph':
 			type = EPG_TYPE_GRAPH
@@ -38,16 +42,14 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		EPGSelectionBase.__init__(self, type, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
 
 		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
+		graphic = self.__config('type_mode').value == "graphics"
+		self.ask_time = now - now % (int(self.__config('roundto').value) * SECS_IN_MIN)
 		if self.type == EPG_TYPE_GRAPH:
-			graphic = config.epgselection.graph_type_mode.value == "graphics"
-			self.ask_time = self.ask_time = now - now % (int(config.epgselection.graph_roundto.value) * SECS_IN_MIN)
 			if not config.epgselection.graph_pig.value:
 				self.skinName = 'GraphicalEPG'
 			else:
 				self.skinName = 'GraphicalEPGPIG'
 		else:
-			graphic = config.epgselection.infobar_type_mode.value == "graphics"
-			self.ask_time = self.ask_time = now - now % (int(config.epgselection.infobar_roundto.value) * SECS_IN_MIN)
 			self.skinName = 'GraphicalInfoBarEPG'
 		self.closeRecursive = False
 		EPGBouquetSelection.__init__(self, graphic)
@@ -209,10 +211,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.BouquetRoot = False
 		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
-		if self.type == EPG_TYPE_GRAPH:
-			self.ask_time = now - now % (int(config.epgselection.graph_roundto.value) * SECS_IN_MIN)
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			self.ask_time = now - now % (int(config.epgselection.infobar_roundto.value) * SECS_IN_MIN)
+		self.ask_time = now - now % (int(self.__config('roundto').value) * SECS_IN_MIN)
 		self['list'].setTimeFocus(time())
 		self['list'].fillEPG(self.services, self.ask_time)
 		self.moveTimeLines(True)
@@ -234,11 +233,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.updEvent(-24)
 
 	def enterDateTime(self):
-		use_time = None
-		if self.type == EPG_TYPE_GRAPH:
-			use_time = config.epgselection.graph_prevtime
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			use_time = config.epgselection.infobar_prevtime
+		use_time = self.__config('prevtime').value
 		if use_time:
 			self.session.openWithCallback(self.onDateTimeInputClosed, TimeDateInput, use_time)
 
@@ -247,10 +242,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			if ret[0]:
 				self.ask_time = ret[1]
 				now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-				if self.type == EPG_TYPE_GRAPH:
-					self.ask_time -= self.ask_time % (int(config.epgselection.graph_roundto.value) * SECS_IN_MIN)
-				elif self.type == EPG_TYPE_INFOBARGRAPH:
-					self.ask_time -= self.ask_time % (int(config.epgselection.infobar_roundto.value) * SECS_IN_MIN)
+				self.ask_time -= self.ask_time % (int(self.__config('roundto').value) * SECS_IN_MIN)
 				l = self['list']
 				# place the entered time halfway across the grid
 				l.setTimeFocus(self.ask_time)
@@ -292,12 +284,8 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 
 	def keyNumberGlobal(self, number):
 		# Set up some values for the differences
-		tp_var, rndto_var, pthr_var, ptmin_var = {
-			EPG_TYPE_GRAPH:        (config.epgselection.graph_prevtimeperiod, config.epgselection.graph_roundto,
-						config.epgselection.graph_primetimehour, config.epgselection.graph_primetimemins),
-			EPG_TYPE_INFOBARGRAPH: (config.epgselection.infobar_prevtimeperiod, config.epgselection.infobar_roundto,
-						config.epgselection.infobar_primetimehour, config.epgselection.infobar_primetimemins),
-			}[self.type]
+		tp_var = self.__config('prevtimeperiod')
+		roundto = self.__config('roundto').value
 		if number == 1:
 			timeperiod = int(tp_var.value)
 			if timeperiod > 60:
@@ -318,13 +306,14 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			self.updEvent(-2)
 		elif number == 5:
 			now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-			self.ask_time = now - now % (int(rndto_var.value) * SECS_IN_MIN)
+			self.ask_time = now - now % (int(roundto) * SECS_IN_MIN)
 			self['list'].setTimeFocus(time())
 			self['list'].fillEPG(None, self.ask_time)
 			self.moveTimeLines(True)
 		elif number == 6:
 			self.updEvent(+2)
-		elif number == 7 and (self.type == EPG_TYPE_GRAPH):
+		elif number == 7 and self.type == EPG_TYPE_GRAPH:
+			print "[sc-epgselectiongraph]", not config.epgselection.graph_heightswitch.value 
 			if config.epgselection.graph_heightswitch.value:
 				config.epgselection.graph_heightswitch.setValue(False)
 			else:
@@ -336,7 +325,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			self.nextPage()
 		elif number == 9:
 			basetime = localtime(self['list'].getTimeBase())
-			basetime = (basetime[0], basetime[1], basetime[2], int(pthr_var.value), int(ptmin_var.value), 0, basetime[6], basetime[7], basetime[8])
+			basetime = (basetime[0], basetime[1], basetime[2], int(self.__config('primetimehour').value), int(self.__config('primetimemins').value), 0, basetime[6], basetime[7], basetime[8])
 			self.ask_time = mktime(basetime)
 			if self.ask_time + 3600 < time():
 				self.ask_time += 86400
@@ -345,7 +334,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		elif number == 0:
 			self.toTop()
 			now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-			self.ask_time = now - now % (int(rndto_var.value) * SECS_IN_MIN)
+			self.ask_time = now - now % (int(roundto) * SECS_IN_MIN)
 			self['list'].setTimeFocus(time())
 			self['list'].fillEPG(None, self.ask_time)
 			self.moveTimeLines()

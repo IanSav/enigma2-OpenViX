@@ -22,10 +22,15 @@ MAX_TIMELINES = 6
 SECS_IN_MIN = 60
 
 class EPGListGraph(EPGListBase):
+	# InfobarGraph and Graph EPGs are use separately named but otherwise identical configuration
+	def __config(self, name):
+		return config.epgselection.dict()[('graph' if self.type == EPG_TYPE_GRAPH else 'infobar') + '_' + name]
+
 	def __init__(self, type, selChangedCB = None, timer = None, graphic=True):
 		print "[EPGListGraph] Init"
 		EPGListBase.__init__(self, selChangedCB, timer)
 
+		self.type = type
 		self.time_focus = time() # default to now
 		self.cur_event = None
 		self.cur_service = None
@@ -86,10 +91,8 @@ class EPGListGraph(EPGListBase):
 		self.foreColorZapSelected = 0xffffff
 		self.backColorZapSelected = 0x436143
 
-		self.serviceFontNameGraph = "Regular"
-		self.eventFontNameGraph = "Regular"
-		self.serviceFontNameInfobar = "Regular"
-		self.eventFontNameInfobar = "Regular"
+		self.serviceFontName = "Regular"
+		self.eventFontName = "Regular"
 
 		self.serviceBorderWidth = 1
 		self.serviceNamePadding = 3
@@ -99,54 +102,33 @@ class EPGListGraph(EPGListBase):
 		self.serviceNumberWidth = 0
 
 		if self.screenwidth == 1920:
-			self.serviceFontSizeGraph = 28
-			self.eventFontSizeGraph = 28
-			self.serviceFontSizeInfobar = 28
-			self.eventFontSizeInfobar = 28
+			self.serviceFontSize = 28
+			self.eventFontSize = 28
 		else:
-			self.serviceFontSizeGraph = 20
-			self.eventFontSizeGraph = 20
-			self.serviceFontSizeInfobar = 20
-			self.eventFontSizeInfobar = 20
-
-		if self.type == EPG_TYPE_GRAPH:
-			self.time_epoch=int(config.epgselection.graph_prevtimeperiod.value)
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			self.time_epoch=int(config.epgselection.infobar_prevtimeperiod.value)
+			self.serviceFontSize = 20
+			self.eventFontSize = 20
 
 		self.l.setBuildFunc(self.buildEntry)
-		if self.type == EPG_TYPE_GRAPH:
-			value = config.epgselection.graph_servicetitle_mode.value
-			round_by = int(config.epgselection.graph_roundto.value)
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			value = config.epgselection.infobar_servicetitle_mode.value
-			round_by = int(config.epgselection.infobar_roundto.value)
-		self.round_by_secs = round_by * SECS_IN_MIN
+		self.round_by_secs = self.__config('roundto').value * SECS_IN_MIN
+		self.time_epoch=int(self.__config('prevtimeperiod').value)
 		self.time_epoch_secs = self.time_epoch * SECS_IN_MIN
-		self.showServiceNumber = "servicenumber" in value
-		self.showServiceTitle = "servicename" in value
-		self.showPicon = "picon" in value
+		serviceTitleMode = self.__config('servicetitle_mode').value
+		self.showServiceNumber = "servicenumber" in serviceTitleMode
+		self.showServiceTitle = "servicename" in serviceTitleMode
+		self.showPicon = "picon" in serviceTitleMode
 
 	def applySkin(self, desktop, screen):
 		if self.skinAttributes is not None:
 			attribs = [ ]
 			for (attrib, value) in self.skinAttributes:
-				if attrib == "ServiceFontGraphical":
-					font = parseFont(value, ((1,1),(1,1)) )
-					self.serviceFontNameGraph = font.family
-					self.serviceFontSizeGraph = font.pointSize
-				elif attrib == "EntryFontGraphical":
-					font = parseFont(value, ((1,1),(1,1)) )
-					self.eventFontNameGraph = font.family
-					self.eventFontSizeGraph = font.pointSize
-				elif attrib == "ServiceFontInfobar":
-					font = parseFont(value, ((1,1),(1,1)) )
-					self.serviceFontNameInfobar = font.family
-					self.serviceFontSizeInfobar = font.pointSize
-				elif attrib == "EventFontInfobar":
-					font = parseFont(value, ((1,1),(1,1)) )
-					self.eventFontNameInfobar = font.family
-					self.eventFontSizeInfobar = font.pointSize
+				if attrib == ("ServiceFontGraphical" if self.type == EPG_TYPE_GRAPH else "ServiceFontInfobar"):
+					font = parseFont(value, ((1,1),(1,1)))
+					self.serviceFontName = font.family
+					self.serviceFontSize = font.pointSize
+				elif attrib == ("EntryFontGraphical" if self.type == EPG_TYPE_GRAPH else "EntryFontInfobar"):
+					font = parseFont(value, ((1,1),(1,1)))
+					self.eventFontName = font.family
+					self.eventFontSize = font.pointSize
 
 				elif attrib == "ServiceForegroundColor":
 					self.foreColorService = parseColor(value).argb()
@@ -208,21 +190,15 @@ class EPGListGraph(EPGListBase):
 				else:
 					attribs.append((attrib,value))
 			self.skinAttributes = attribs
-		rc = GUIComponent.applySkin(self, desktop, screen)
-
 		rc = EPGListBase.applySkin(self, desktop, screen)
 		self.setItemsPerPage()
 
 		# cache service number width
 		if self.showServiceNumber:
-			font_conf = None
-			if self.type == EPG_TYPE_GRAPH:
-				font_conf = config.epgselection.graph_servfs.value
-			elif self.type == EPG_TYPE_INFOBARGRAPH:
-				font_conf = config.epgselection.infobar_servfs.value
+			font_conf = self.__config('servfs').value
 			if font_conf != None:
-				font = gFont(self.serviceFontNameGraph, self.serviceFontSizeGraph + font_conf)
-				self.serviceNumberWidth = getTextBoundarySize(self.instance, font, self.instance.size(), "0000" ).width()
+				font = gFont(self.serviceFontName, self.serviceFontSize + font_conf)
+				self.serviceNumberWidth = getTextBoundarySize(self.instance, font, self.instance.size(), "0000").width()
 		return rc
 
 	def setTimeFocus(self, time_focus):
@@ -283,36 +259,30 @@ class EPGListGraph(EPGListBase):
 	GUI_WIDGET = eListbox
 
 	def setItemsPerPage(self):
-		if self.type == EPG_TYPE_GRAPH:
-			if self.listHeight > 0:
-				itemHeight = self.listHeight / config.epgselection.graph_itemsperpage.value
+		if self.numberOfRows:
+			self.__config('itemsperpage').default = self.numberOfRows
+		if self.listHeight > 0:
+			itemHeight = self.listHeight / self.__config('itemsperpage').value
+		else:
+			itemHeight = 54 # some default (270/5)
+
+		if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_heightswitch.value:
+			if ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 3) >= 27:
+				tmp_itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 3)
+			elif ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 2) >= 27:
+				tmp_itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 2)
 			else:
-				itemHeight = 54 # some default (270/5)
-			if config.epgselection.graph_heightswitch.value:
-				if ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 3) >= 27:
-					tmp_itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 3)
-				elif ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 2) >= 27:
-					tmp_itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) / 2)
-				else:
-					tmp_itemHeight = 27
-				if tmp_itemHeight < itemHeight:
-					itemHeight = tmp_itemHeight
-				else:
-					if ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 3) <= 45:
-						itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 3)
-					elif ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 2) <= 45:
-						itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 2)
-					else:
-						itemHeight = 45
-			if self.numberOfRows:
-				config.epgselection.graph_itemsperpage.default = self.numberOfRows
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			if self.numberOfRows:
-				config.epgselection.infobar_itemsperpage.default = self.numberOfRows
-			if self.listHeight > 0:
-				itemHeight = self.listHeight / config.epgselection.infobar_itemsperpage.value
+				tmp_itemHeight = 27
+			if tmp_itemHeight < itemHeight:
+				itemHeight = tmp_itemHeight
 			else:
-				itemHeight = 54 # some default (270/5)
+				if ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 3) <= 45:
+					itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 3)
+				elif ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 2) <= 45:
+					itemHeight = ((self.listHeight / config.epgselection.graph_itemsperpage.value) * 2)
+				else:
+					itemHeight = 45
+
 		self.l.setItemHeight(itemHeight)
 		self.instance.resize(eSize(self.listWidth, self.listHeight / itemHeight * itemHeight))
 		self.listHeight = self.instance.size().height()
@@ -320,12 +290,8 @@ class EPGListGraph(EPGListBase):
 		self.itemHeight = itemHeight
 
 	def setFontsize(self):
-		if self.type == EPG_TYPE_GRAPH:
-			self.l.setFont(0, gFont(self.serviceFontNameGraph, self.serviceFontSizeGraph + config.epgselection.graph_servfs.value))
-			self.l.setFont(1, gFont(self.eventFontNameGraph, self.eventFontSizeGraph + config.epgselection.graph_eventfs.value))
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			self.l.setFont(0, gFont(self.serviceFontNameInfobar, self.serviceFontSizeInfobar + config.epgselection.infobar_servfs.value))
-			self.l.setFont(1, gFont(self.eventFontNameInfobar, self.eventFontSizeInfobar + config.epgselection.infobar_eventfs.value))
+		self.l.setFont(0, gFont(self.serviceFontName, self.serviceFontSize + self.__config('servfs').value))
+		self.l.setFont(1, gFont(self.eventFontName, self.eventFontSize + self.__config('eventfs').value))
 
 	def isSelectable(self, service, service_name, events, picon, channel):
 		return (events and len(events) and True) or False
@@ -371,23 +337,9 @@ class EPGListGraph(EPGListBase):
 		width = esize.width()
 		height = esize.height()
 
-		servicew = 0
-		piconw = 0
-		channelw = 0
-		if self.type == EPG_TYPE_GRAPH:
-			if self.showServiceTitle:
-				servicew = config.epgselection.graph_servicewidth.value + 2*self.serviceNamePadding
-			if self.showPicon:
-				piconw = config.epgselection.graph_piconwidth.value
-			if self.showServiceNumber:
-				channelw = self.serviceNumberWidth + 2*self.serviceNumberPadding
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			if self.showServiceTitle:
-				servicew = config.epgselection.infobar_servicewidth.value + 2*self.serviceNamePadding
-			if self.showPicon:
-				piconw = config.epgselection.infobar_piconwidth.value
-			if self.showServiceNumber:
-				channelw = self.serviceNumberWidth + 2*self.serviceNumberPadding
+		servicew = self.__config('servicewidth').value + 2*self.serviceNamePadding if self.showServiceTitle else 0
+		piconw = self.__config('piconwidth').value if self.showPicon else 0
+		channelw = self.serviceNumberWidth + 2*self.serviceNumberPadding if self.showServiceNumber else 0
 		w = (channelw + piconw + servicew)
 		self.service_rect = eRect(0, 0, w, height)
 		self.event_rect = eRect(w, 0, width - w, height)
@@ -492,8 +444,8 @@ class EPGListGraph(EPGListBase):
 			if channel:
 				namefont = 0
 				namefontflag = int(config.epgselection.graph_servicenumber_alignment.value)
-				font = gFont(self.serviceFontNameGraph, self.serviceFontSizeGraph + config.epgselection.graph_servfs.value)
-				channelWidth = getTextBoundarySize(self.instance, font, self.instance.size(), (channel < 10000) and "0000" or str(channel) ).width()
+				font = gFont(self.serviceFontName, self.serviceFontSize + self.__config('servfs').value)
+				channelWidth = getTextBoundarySize(self.instance, font, self.instance.size(), (channel < 10000) and "0000" or str(channel)).width()
 				res.append(MultiContentEntryText(
 					pos = (colX + self.serviceNumberPadding, r1.top() + self.serviceBorderWidth),
 					size = (channelWidth, r1.height() - 2 * self.serviceBorderWidth),
@@ -664,10 +616,7 @@ class EPGListGraph(EPGListBase):
 				evY = top + self.eventBorderWidth
 				evW = ewidth - 2 * (self.eventBorderWidth + self.eventNamePadding)
 				evH = height - 2 * self.eventBorderWidth
-				if self.type == EPG_TYPE_GRAPH:
-					infowidth = config.epgselection.graph_infowidth.value
-				elif self.type == EPG_TYPE_INFOBARGRAPH:
-					infowidth = config.epgselection.infobar_infowidth.value
+				infowidth = self.__config('infowidth').value
 				if evW < infowidth and infoPix is not None:
 					res.append(MultiContentEntryPixmapAlphaBlend(
 						pos = (left + xpos + self.eventBorderWidth, evY), size = (ewidth - 2 * self.eventBorderWidth, evH),
@@ -754,10 +703,7 @@ class EPGListGraph(EPGListBase):
 
 	def getSelectionPosition(self,serviceref):
 		selx = self.select_rect.left()+self.select_rect.width()
-		if self.type == EPG_TYPE_GRAPH:
-			itemsperpage = config.epgselection.graph_itemsperpage.value
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			itemsperpage = config.epgselection.infobar_itemsperpage.value
+		itemsperpage = self.__config('itemsperpage').value
 		indx = int(self.l.getCurrentSelectionIndex())
 		while indx+1 > itemsperpage:
 			indx = indx - itemsperpage
@@ -959,6 +905,9 @@ class EPGListGraph(EPGListBase):
 
 
 class TimelineText(GUIComponent):
+	def __config(self, name):
+		return config.epgselection.dict()[('graph' if self.type == EPG_TYPE_GRAPH else 'infobar') + '_' + name]
+
 	def __init__(self, type, graphic):
 		GUIComponent.__init__(self)
 		self.type = type
@@ -1012,11 +961,7 @@ class TimelineText(GUIComponent):
 		return rc
 
 	def setTimeLineFontsize(self):
-		font_conf = None
-		if self.type == EPG_TYPE_GRAPH:
-			font_conf= config.epgselection.graph_timelinefs.value
-		elif self.type == EPG_TYPE_INFOBARGRAPH:
-			font_conf = config.epgselection.infobar_timelinefs.value
+		font_conf= self.__config('timelinefs').value
 		if font_conf != None:
 			self.l.setFont(0, gFont(self.timelineFontName, self.timelineFontSize + font_conf))
 
@@ -1111,7 +1056,7 @@ class TimelineText(GUIComponent):
 				if config.usage.time.enabled.value:
 					timetext = strftime(config.usage.time.short.value, ttime)
 				else:
-					if (self.type == EPG_TYPE_GRAPH and config.epgselection.graph_timeline24h.value) or (self.type == EPG_TYPE_INFOBARGRAPH and config.epgselection.infobar_timeline24h.value):
+					if self.__config('timeline24h').value:
 						timetext = strftime("%H:%M", ttime)
 					else:
 						if int(strftime("%H", ttime)) > 12:
