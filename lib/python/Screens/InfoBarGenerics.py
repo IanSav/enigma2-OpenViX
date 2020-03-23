@@ -26,6 +26,12 @@ from Screens.ChoiceBox import ChoiceBox
 from Screens.Dish import Dish
 from Screens.EventView import EventViewEPGSelect, EventViewSimple
 from Screens.EpgSelection import EPGSelection
+from Screens.Epg.EpgSelectionGraph import EPGSelectionGraph
+from Screens.Epg.EpgSelectionEnhanced import EPGSelectionEnhanced
+from Screens.Epg.EpgSelectionSingle import EPGSelectionSingle
+from Screens.Epg.EpgSelectionSimilar import EPGSelectionSimilar
+from Screens.Epg.EpgSelectionMulti import EPGSelectionMulti
+from Screens.Epg.EpgSelectionInfobar import EPGSelectionInfobar
 from Screens.InputBox import InputBox
 from Screens.MessageBox import MessageBox
 from Screens.MinuteInput import MinuteInput
@@ -1626,6 +1632,15 @@ class InfoBarEPG:
 				services.append(ServiceReference(service))
 		return services
 
+	def shouldUseNewEPG(self):
+		#return False
+		# don't use new EPG when recordings are in progress
+		recordings = self.session.nav.getRecordings()
+		next_rec_time = -1
+		if not recordings:
+			next_rec_time = self.session.nav.RecordTimer.getNextRecordingTime()
+		return False if recordings or (next_rec_time > 0 and (next_rec_time - time()) < 360) else True
+
 	def openBouquetEPG(self, bouquet = None, bouquets = None):
 		if bouquet:
 			self.StartBouquet = bouquet
@@ -1660,55 +1675,77 @@ class InfoBarEPG:
 		else:
 			self.openBouquetEPG(bouquets=bouquets)
 
+	def NewMultiServiceEPG(self, type, showBouquet, startBouquet, startRef):
+		def openEPG(bouquet, bouquets):
+			bouquet = bouquet or startBouquet
+			self.dlg_stack.append(self.session.openWithCallback(self.closed, type, zapFunc=self.zapToService,
+				startBouquet=bouquet, startRef=startRef, bouquets=bouquets))
+
+		bouquets = self.servicelist.getEPGBouquetList()
+		bouquetCount = len(bouquets) if bouquets else 0
+		if bouquetCount > 1 and showBouquet:
+			# show bouquet list
+			self.bouquetSel = self.session.openWithCallback(self.closed, EpgBouquetSelector, bouquets, openEPG, enableWrapAround=True)
+			self.dlg_stack.append(self.bouquetSel)
+		else:
+			openEPG(None, bouquets)
+
 	def openMultiServiceEPG(self):
 		if self.servicelist is None:
 			return
-		self.EPGtype = "multi"
-		self.StartBouquet = self.servicelist.getRoot()
-		if isMoviePlayerInfoBar(self):
-			self.StartRef = self.lastservice
+		startBouquet = self.servicelist.getRoot()
+		startRef = self.lastservice if isMoviePlayerInfoBar(self) else self.session.nav.getCurrentlyPlayingServiceOrGroup()
+		if self.shouldUseNewEPG():
+			self.NewMultiServiceEPG(EPGSelectionMulti, config.epgselection.multi_showbouquet.value, startBouquet, startRef)
 		else:
-			self.StartRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
-		self.MultiServiceEPG()
+			self.StartBouquet = startBouquet
+			self.StartRef = startRef
+			self.EPGtype = "multi"
+			self.MultiServiceEPG()
 
 	def openGraphEPG(self, reopen=False):
 		if self.servicelist is None:
 			return
-		self.EPGtype = "graph"
-		if not reopen:
-			self.StartBouquet = self.servicelist.getRoot()
-			self.StartRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
-		self.MultiServiceEPG()
+		startBouquet = self.servicelist.getRoot()
+		startRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
+		if self.shouldUseNewEPG():
+			self.NewMultiServiceEPG(EPGSelectionGraph, config.epgselection.graph_showbouquet.value, startBouquet, startRef)
+		else:
+			self.StartBouquet = startBouquet
+			self.StartRef = startRef
+			self.EPGtype = "graph"
+			self.MultiServiceEPG()
 
 	def openSingleServiceEPG(self, reopen=False):
 		if self.servicelist is None:
 			return
-		self.EPGtype = "enhanced"
-		self.SingleServiceEPG()
+		if self.shouldUseNewEPG():
+			self.NewSingleServiceEPG(EPGSelectionEnhanced)
+		else:
+			self.EPGtype = "enhanced"
+			self.SingleServiceEPG()
 
 	def openInfoBarEPG(self, reopen=False):
 		if self.servicelist is None:
 			return
-		if not reopen:
-			self.StartBouquet = self.servicelist.getRoot()
-			self.StartRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
-		if config.epgselection.infobar_type_mode.value == 'single':
-			self.EPGtype = "infobar"
-			self.SingleServiceEPG()
+		startBouquet = self.servicelist.getRoot()
+		startRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
+		if self.shouldUseNewEPG():
+			if config.epgselection.infobar_type_mode.value == 'single':
+				self.NewSingleServiceEPG()
+			else:
+				bouquets = self.servicelist.getEPGBouquetList()
+				self.dlg_stack.append(self.session.openWithCallback(self.closed, EPGSelectionGraph, EPGtype='infobargraph', 
+					zapFunc=self.zapToService, startBouquet=startBouquet, startRef=startRef, bouquets=bouquets))
 		else:
-			self.EPGtype = "infobargraph"
-			self.MultiServiceEPG()
-
-	def showCoolTVGuide(self):
-		if self.servicelist is None:
-			return
-		if fileExists("/usr/lib/enigma2/python/Plugins/Extensions/CoolTVGuide/plugin.pyo"):
-			for plugin in plugins.getPlugins([PluginDescriptor.WHERE_EXTENSIONSMENU, PluginDescriptor.WHERE_EVENTINFO]):
-				if plugin.name == _("Cool TV Guide"):
-					self.runPlugin(plugin)
-					break
-		else:
-			self.session.open(MessageBox, _("The Cool TV Guide plugin is not installed!\nDont bother with it and use the default ViX EPG guide instead."), type = MessageBox.TYPE_INFO,timeout = 10 )
+			self.StartBouquet = startBouquet
+			self.StartRef = startRef
+			if config.epgselection.infobar_type_mode.value == 'single':
+				self.EPGtype = "infobar"
+				self.SingleServiceEPG()
+			else:
+				self.EPGtype = "infobargraph"
+				self.MultiServiceEPG()
 
 	def SingleServiceEPG(self):
 		self.StartBouquet = self.servicelist.getRoot()
@@ -1724,6 +1761,20 @@ class InfoBarEPG:
 				self.session.openWithCallback(self.SingleServiceEPGClosed,EPGSelection, self.servicelist, zapFunc=self.zapToService, serviceChangeCB = self.changeServiceCB, EPGtype=self.EPGtype, StartBouquet=self.StartBouquet, StartRef=self.StartRef)
 			else:
 				self.session.openWithCallback(self.SingleServiceEPGClosed, EPGSelection, ref)
+
+	def NewSingleServiceEPG(self, type):
+		startBouquet = self.servicelist.getRoot()
+		startRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
+		ref = self.lastservce if isMoviePlayerInfoBar(self) else startRef
+		if ref:
+			services = self.getBouquetServices(startBouquet)
+			self.serviceSel = SimpleServicelist(services)
+			if self.serviceSel.selectService(ref):
+				print "[EPGSelection] Single EPG opening with servicelist and startRef", startRef
+				self.session.openWithCallback(self.SingleServiceEPGClosed, type, self.servicelist, zapFunc=self.zapToService, serviceChangeCB=self.changeServiceCB, startBouquet=startBouquet, startRef=startRef)
+			else:
+				print "[EPGSelection] opening with ref", ref
+				self.session.openWithCallback(self.SingleServiceEPGClosed, type, ref)
 
 	def changeServiceCB(self, direction, epg):
 		if self.serviceSel:
