@@ -22,7 +22,6 @@ class EPGSelectionInfobar(EPGSelectionBase):
 				'prevBouquet': (self.prevBouquet, _('Go to previous bouquet')),
 				'nextService': (self.nextPage, _('Move down a page')),
 				'prevService': (self.prevPage, _('Move up a page')),
-				'input_date_time': (self.enterDateTime, _('Go to specific data/time')),
 				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
 				'info': (self.Info, _('Show detailed event info')),
 				'infolong': (self.InfoLong, _('Show single epg for current channel')),

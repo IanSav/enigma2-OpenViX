@@ -6,7 +6,7 @@ from Screens.HelpMenu import HelpableScreen
 from Components.About import about
 from Components.ActionMap import HelpableActionMap, HelpableNumberActionMap
 from Components.Button import Button
-from Components.config import config, configfile, ConfigClock
+from Components.config import config, configfile
 from Components.Epg.EpgListGraph import EPGListGraph, TimelineText, EPG_TYPE_INFOBARGRAPH, EPG_TYPE_GRAPH, MAX_TIMELINES
 from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
 from Components.Label import Label
@@ -20,7 +20,6 @@ from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
 from Screens.PictureInPicture import PictureInPicture
 from Screens.Setup import Setup
-from Screens.TimeDateInput import TimeDateInput
 from ServiceReference import ServiceReference
 
 # Various value are in minutes, while others are in seconds.
@@ -32,13 +31,10 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 	def __config(self, name):
 		return config.epgselection.dict()[('graph' if self.type == EPG_TYPE_GRAPH else 'infobar') + '_' + name]
 
-	def __init__(self, session, EPGtype = 'graph', zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
+	def __init__(self, session, EPGtype = 'graph', zapFunc = None, bouquetChangeCB = None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
 		print "[EPGSelectionGraph] ------- NEW VERSION -------"
 
-		if EPGtype == 'graph':
-			type = EPG_TYPE_GRAPH
-		else:
-			type = EPG_TYPE_INFOBARGRAPH
+		type = EPG_TYPE_GRAPH if EPGtype == 'graph' else EPG_TYPE_INFOBARGRAPH
 		EPGSelectionBase.__init__(self, type, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
 
 		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
@@ -82,8 +78,8 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
 			{
-				'nextService': (self.nextService, _('Jump forward 24 hours')),
-				'prevService': (self.prevService, _('Jump back 24 hours')),
+				'nextService': (self.forward24Hours, _('Jump forward 24 hours')),
+				'prevService': (self.back24Hours, _('Jump back 24 hours')),
 				'nextBouquet': (self.nextBouquet, _('Go to next bouquet')),
 				'prevBouquet': (self.prevBouquet, _('Go to previous bouquet')),
 				'input_date_time': (self.enterDateTime, _('Go to specific data/time')),
@@ -96,18 +92,18 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			}, -1)
 		self['epgactions'].csel = self
 
-		self['input_actions'] = HelpableNumberActionMap(self, 'NumberActions',
+		self['input_actions'] = HelpableActionMap(self, 'NumberActions',
 			{
-				'1': (self.keyNumberGlobal, _('Reduce time scale')),
-				'2': (self.keyNumberGlobal, _('Page up')),
-				'3': (self.keyNumberGlobal, _('Increase time scale')),
-				'4': (self.keyNumberGlobal, _('page left')),
-				'5': (self.keyNumberGlobal, _('Jump to current time')),
-				'6': (self.keyNumberGlobal, _('Page right')),
-				'7': (self.keyNumberGlobal, _('No of items switch (increase or reduced)')),
-				'8': (self.keyNumberGlobal, _('Page down')),
-				'9': (self.keyNumberGlobal, _('Jump to prime time')),
-				'0': (self.keyNumberGlobal, _('Move to home of list'))
+				'1': (self.reduceTimeScale, _('Reduce time scale')),
+				'2': (self.prevPage, _('Page up')),
+				'3': (self.increaseTimeScale, _('Increase time scale')),
+				'4': (self.pageLeft, _('page left')),
+				'5': (self.goToCurrentTime, _('Jump to current time')),
+				'6': (self.pageRight, _('Page right')),
+				'7': (self.toggleNumberOfRows, _('No of items switch (increase or reduced)')),
+				'8': (self.nextPage, _('Page down')),
+				'9': (self.goToPrimeTime, _('Jump to prime time')),
+				'0': (self.goToCurrentTimeAndTop, _('Move to home of list'))
 			}, -1)
 		self['input_actions'].csel = self
 
@@ -226,28 +222,22 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.moveBouquetUp()
 		self.bouquetChanged()
 
-	def nextService(self):
+	def forward24Hours(self):
 		self.updEvent(+24)
 
-	def prevService(self):
+	def back24Hours(self):
 		self.updEvent(-24)
 
-	def enterDateTime(self):
-		use_time = self.__config('prevtime').value
-		if use_time:
-			self.session.openWithCallback(self.onDateTimeInputClosed, TimeDateInput, use_time)
-
 	def onDateTimeInputClosed(self, ret):
-		if len(ret) > 1:
-			if ret[0]:
-				self.ask_time = ret[1]
-				now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-				self.ask_time -= self.ask_time % (int(self.__config('roundto').value) * SECS_IN_MIN)
-				l = self['list']
-				# place the entered time halfway across the grid
-				l.setTimeFocus(self.ask_time)
-				l.fillEPG(None, self.ask_time - l.getTimeEpoch() * SECS_IN_MIN / 2)
-				self.moveTimeLines(True)
+		if len(ret) > 1 and ret[0]:
+			self.ask_time = ret[1]
+			now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
+			self.ask_time -= self.ask_time % (int(self.__config('roundto').value) * SECS_IN_MIN)
+			l = self['list']
+			# place the entered time halfway across the grid
+			l.setTimeFocus(self.ask_time)
+			l.fillEPG(None, self.ask_time - l.getTimeEpoch() * SECS_IN_MIN / 2)
+			self.moveTimeLines(True)
 		if self.eventviewDialog and self.type == EPG_TYPE_INFOBARGRAPH:
 			self.infoKeyPressed(True)
 
@@ -282,38 +272,52 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			setService(cur[1])
 			setEvent(cur[0])
 
-	def keyNumberGlobal(self, number):
-		# Set up some values for the differences
+	def reduceTimeScale(self):
 		tp_var = self.__config('prevtimeperiod')
-		roundto = self.__config('roundto').value
-		if number == 1:
-			timeperiod = int(tp_var.value)
-			if timeperiod > 60:
-				timeperiod -= 30
-				self['list'].setTimeEpoch(timeperiod)
-				tp_var.setValue(str(timeperiod))
-				self.moveTimeLines()
-		elif number == 2:
-			self.prevPage()
-		elif number == 3:
-			timeperiod = int(tp_var.value)
-			if timeperiod < 300:
-				timeperiod += 30
-				self['list'].setTimeEpoch(timeperiod)
-				tp_var.setValue(str(timeperiod))
-				self.moveTimeLines()
-		elif number == 4:
-			self.updEvent(-2)
-		elif number == 5:
-			now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-			self.ask_time = now - now % (int(roundto) * SECS_IN_MIN)
-			self['list'].setTimeFocus(time())
-			self['list'].fillEPG(None, self.ask_time)
-			self.moveTimeLines(True)
-		elif number == 6:
-			self.updEvent(+2)
-		elif number == 7 and self.type == EPG_TYPE_GRAPH:
-			print "[sc-epgselectiongraph]", not config.epgselection.graph_heightswitch.value 
+		timeperiod = int(tp_var.value)
+		if timeperiod > 60:
+			timeperiod -= 30
+			self['list'].setTimeEpoch(timeperiod)
+			tp_var.setValue(str(timeperiod))
+			self.moveTimeLines()
+	
+	def increaseTimeScale(self):
+		tp_var = self.__config('prevtimeperiod')
+		timeperiod = int(tp_var.value)
+		if timeperiod < 300:
+			timeperiod += 30
+			self['list'].setTimeEpoch(timeperiod)
+			tp_var.setValue(str(timeperiod))
+			self.moveTimeLines()
+
+	def pageLeft(self):
+		self.updEvent(-2)
+
+	def pageRight(self):
+		self.updEvent(+2)
+
+	def goToCurrentTime(self):
+		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
+		self.ask_time = now - now % (int(self.__config('roundto').value) * SECS_IN_MIN)
+		self['list'].setTimeFocus(time())
+		self['list'].fillEPG(None, self.ask_time)
+		self.moveTimeLines(True)
+
+	def goToPrimeTime(self):
+		basetime = localtime(self['list'].getTimeBase())
+		basetime = (basetime[0], basetime[1], basetime[2], int(self.__config('primetimehour').value), int(self.__config('primetimemins').value), 0, basetime[6], basetime[7], basetime[8])
+		self.ask_time = mktime(basetime)
+		if self.ask_time + 3600 < time():
+			self.ask_time += 86400
+		self['list'].fillEPG(None, self.ask_time)
+		self.moveTimeLines(True)
+
+	def goToCurrentTimeAndTop(self):
+		self.toTop()
+		self.goToCurrentTime()
+
+	def toggleNumberOfRows(self):
+		if self.type == EPG_TYPE_GRAPH:
 			if config.epgselection.graph_heightswitch.value:
 				config.epgselection.graph_heightswitch.setValue(False)
 			else:
@@ -321,20 +325,4 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			self['list'].setItemsPerPage()
 			self['list'].fillEPG(None)
 			self.moveTimeLines()
-		elif number == 8:
-			self.nextPage()
-		elif number == 9:
-			basetime = localtime(self['list'].getTimeBase())
-			basetime = (basetime[0], basetime[1], basetime[2], int(self.__config('primetimehour').value), int(self.__config('primetimemins').value), 0, basetime[6], basetime[7], basetime[8])
-			self.ask_time = mktime(basetime)
-			if self.ask_time + 3600 < time():
-				self.ask_time += 86400
-			self['list'].fillEPG(None, self.ask_time)
-			self.moveTimeLines(True)
-		elif number == 0:
-			self.toTop()
-			now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-			self.ask_time = now - now % (int(roundto) * SECS_IN_MIN)
-			self['list'].setTimeFocus(time())
-			self['list'].fillEPG(None, self.ask_time)
-			self.moveTimeLines()
+

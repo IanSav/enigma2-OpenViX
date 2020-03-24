@@ -1,10 +1,11 @@
+from time import time
 from enigma import eServiceReference, eTimer, eServiceCenter, ePoint
 
 from Screens.Screen import Screen
 from Screens.HelpMenu import HelpableScreen
 from Components.ActionMap import HelpableActionMap, HelpableNumberActionMap
 from Components.Button import Button
-from Components.config import config, configfile
+from Components.config import config, configfile, ConfigClock, ConfigDateTime
 from Components.Epg.EpgListBase import EPG_TYPE_SINGLE, EPG_TYPE_SIMILAR, EPG_TYPE_MULTI, EPG_TYPE_ENHANCED, EPG_TYPE_INFOBAR, EPG_TYPE_GRAPH, EPG_TYPE_INFOBARGRAPH
 from Components.Epg.EpgBouquetList import EPGBouquetList
 from Components.Label import Label
@@ -16,11 +17,11 @@ from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
 from Screens.PictureInPicture import PictureInPicture
 from Screens.Setup import Setup
+from Screens.TimeDateInput import TimeDateInput
 from Screens.TimerEntry import TimerEntry, InstantRecordTimerEntry
 from RecordTimer import RecordTimerEntry, parseEvent, AFTEREVENT
 from ServiceReference import ServiceReference
 
-mepg_config_initialized = False
 # PiPServiceRelation installed?
 try:
 	from Plugins.SystemPlugins.PiPServiceRelation.plugin import getRelationDict
@@ -28,11 +29,9 @@ try:
 except:
 	plugin_PiPServiceRelation_installed = False
 
-# Various value are in minutes, while others are in seconds.
-# Use this to remind us what is going on...
-SECS_IN_MIN = 60
-
 class EPGSelectionBase(Screen, HelpableScreen):
+	lastEnteredTime = None
+	lastEnteredDate = None
 	EMPTY = 0
 	ADD_TIMER = 1
 	REMOVE_TIMER = 2
@@ -58,10 +57,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.currch = None
 		self.session.pipshown = False
 		self.cureventindex = None
-		if plugin_PiPServiceRelation_installed:
-			self.pipServiceRelation = getRelationDict()
-		else:
-			self.pipServiceRelation = {}
+		self.pipServiceRelation = getRelationDict() if plugin_PiPServiceRelation_installed else {}
 		self.CurrBouquet = None
 		self.CurrService = None
 		self.BouquetRoot = False
@@ -212,6 +208,12 @@ class EPGSelectionBase(Screen, HelpableScreen):
 
 	def eventSelected(self):
 		self.infoKeyPressed()
+
+	def enterDateTime(self):
+		if not EPGSelectionBase.lastEnteredTime:
+			EPGSelectionBase.lastEnteredTime = ConfigClock(default=time())
+			EPGSelectionBase.lastEnteredDate = ConfigDateTime(default=time(), formatstring=config.usage.date.full.value, increment=86400)
+		self.session.openWithCallback(self.onDateTimeInputClosed, TimeDateInput, EPGSelectionBase.lastEnteredTime, EPGSelectionBase.lastEnteredDate)
 
 	def openSingleEPG(self):
 		from Screens.Epg.EpgSelectionSingle import EPGSelectionSingle

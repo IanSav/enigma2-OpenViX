@@ -109,8 +109,8 @@ class EPGListGraph(EPGListBase):
 			self.eventFontSize = 20
 
 		self.l.setBuildFunc(self.buildEntry)
-		self.round_by_secs = self.__config('roundto').value * SECS_IN_MIN
-		self.time_epoch=int(self.__config('prevtimeperiod').value)
+		self.round_by_secs = int(self.__config('roundto').value) * SECS_IN_MIN
+		self.time_epoch = int(self.__config('prevtimeperiod').value)
 		self.time_epoch_secs = self.time_epoch * SECS_IN_MIN
 		serviceTitleMode = self.__config('servicetitle_mode').value
 		self.showServiceNumber = "servicenumber" in serviceTitleMode

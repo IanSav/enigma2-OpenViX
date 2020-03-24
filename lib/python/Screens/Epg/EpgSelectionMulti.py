@@ -2,7 +2,7 @@ from time import localtime, time, strftime
 from enigma import eTimer
 
 from Components.ActionMap import HelpableActionMap
-from Components.config import config, ConfigClock
+from Components.config import config
 from Components.Epg.EpgListMulti import EPGListMulti
 from Components.Epg.EpgListBase import EPG_TYPE_MULTI
 from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
@@ -10,7 +10,6 @@ from Components.Label import Label
 from Components.Pixmap import Pixmap
 from Screens.EventView import EventViewEPGSelect
 from Screens.Setup import Setup
-from Screens.TimeDateInput import TimeDateInput
 
 # Various value are in minutes, while others are in seconds.
 # Use this to remind us what is going on...
@@ -119,21 +118,10 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 		if self.serviceChangeCB:
 			self.serviceChangeCB(-1, self)
 
-	def enterDateTime(self):
-		global mepg_config_initialized
-		use_time = None
-		if not mepg_config_initialized:
-			config.misc.prev_mepg_time = ConfigClock(default=time())
-			mepg_config_initialized = True
-		use_time = config.misc.prev_mepg_time
-		if use_time:
-			self.session.openWithCallback(self.onDateTimeInputClosed, TimeDateInput, use_time)
-
 	def onDateTimeInputClosed(self, ret):
-		if len(ret) > 1:
-			if ret[0]:
-				self.ask_time = ret[1]
-				self['list'].fillEPG(self.services, self.ask_time)
+		if len(ret) > 1 and ret[0]:
+			self.ask_time = ret[1]
+			self['list'].fillEPG(self.services, self.ask_time)
 
 	def infoKeyPressed(self, eventviewopen=False):
 		cur = self['list'].getCurrent()
