@@ -1732,7 +1732,7 @@ class InfoBarEPG:
 		startRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 		if self.shouldUseNewEPG():
 			if config.epgselection.infobar_type_mode.value == 'single':
-				self.NewSingleServiceEPG()
+				self.NewSingleServiceEPG(EPGSelectionInfobar)
 			else:
 				bouquets = self.servicelist.getEPGBouquetList()
 				self.dlg_stack.append(self.session.openWithCallback(self.closed, EPGSelectionGraph, EPGtype='infobargraph', 
