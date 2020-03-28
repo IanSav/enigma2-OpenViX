@@ -22,7 +22,7 @@ MAX_TIMELINES = 6
 SECS_IN_MIN = 60
 
 class EPGListGraph(EPGListBase):
-	# InfobarGraph and Graph EPGs are use separately named but otherwise identical configuration
+	# InfobarGraph and Graph EPGs use the same shape config, just with the root of the name distingushing them
 	def __config(self, name):
 		return config.epgselection.dict()[('graph' if self.type == EPG_TYPE_GRAPH else 'infobar') + '_' + name]
 
@@ -32,12 +32,11 @@ class EPGListGraph(EPGListBase):
 
 		self.type = type
 		self.time_focus = time() # default to now
-		self.cur_event = None
-		self.cur_service = None
-		self.select_rect = None
+		self.selectedEventIndex = None
+		self.selectedService = None
+		self.selection_rect = None
 		self.event_rect = None
 		self.service_rect = None
-		self.currentlyPlaying = None
 		self.showPicon = False
 		self.showServiceTitle = True
 		self.showServiceNumber = False
@@ -201,13 +200,22 @@ class EPGListGraph(EPGListBase):
 				self.serviceNumberWidth = getTextBoundarySize(self.instance, font, self.instance.size(), "0000").width()
 		return rc
 
+	def __setTimeBase(self, time_center):
+		# prefer time being aligned in the middle of the EPG, but clip to the maximum EPG data history
+		self.time_base = int(max(time_center - self.time_epoch_secs // 2, time() - int(config.epg.histminutes.value) * SECS_IN_MIN))
+		# round up so that we favour a bit more info to the right of the timeline
+		self.time_base += -self.time_base % self.round_by_secs
+
 	def setTimeFocus(self, time_focus):
+		self.__setTimeBase(time_focus)
 		self.time_focus = time_focus
 
 	def setTimeEpoch(self, epoch):
+		center = self.time_base + self.time_epoch_secs // 2
 		self.time_epoch = epoch
 		self.time_epoch_secs = epoch * SECS_IN_MIN
-		self.fillEPG(None)
+		self.__setTimeBase(center)
+		self.fillEPG()
 
 	def getTimeEpoch(self):
 		return self.time_epoch
@@ -222,30 +230,28 @@ class EPGListGraph(EPGListBase):
 		return None
 
 	def getCurrent(self):
-		if self.cur_service is None:
+		if self.selectedService is None:
 			return None, None
-		events = self.cur_service[2]
-		refstr = self.cur_service[0]
-		if self.cur_event is None or not events or (self.cur_event and events and self.cur_event > len(events)-1):
+		events = self.selectedService[2]
+		refstr = self.selectedService[0]
+		if self.selectedEventIndex is None or not events or (self.selectedEventIndex and events and self.selectedEventIndex > len(events)-1):
 			return None, ServiceReference(refstr)
-		event = events[self.cur_event] #(event_id, event_title, begin_time, duration)
+		event = events[self.selectedEventIndex] #(event_id, event_title, begin_time, duration)
 		eventid = event[0]
 		service = ServiceReference(refstr)
 		event = self.getEventFromId(service, eventid) # get full event info
 		return event, service
 
-	def setTimeFocusFromEvent(self, cur_event):
-		cur_service = self.l.getCurrentSelection()
-		if cur_service:
-			events = cur_service[2]
+	def setTimeFocusFromEvent(self, selectedEventIndex):
+		if self.selectedService:
+			events = self.selectedService[2]
 			if events and len(events):
-				self.cur_event = max(min(len(events) - 1, cur_event), 0)
-				event = events[self.cur_event]
+				self.selectedEventIndex = max(min(len(events) - 1, selectedEventIndex), 0)
+				event = events[self.selectedEventIndex]
 
 				# clip the selected event times to the current screen
-				time_base = self.getTimeBase()
-				ev_time = max(time_base, event[2])
-				ev_end_time = min(event[2] + event[3], time_base + self.time_epoch_secs)
+				ev_time = max(self.time_base, event[2])
+				ev_end_time = min(event[2] + event[3], self.time_base + self.time_epoch_secs)
 				if ev_time <= time() < ev_end_time:
 					# selected event contains the current time, user is interested in current things
 					self.time_focus = time()
@@ -253,8 +259,7 @@ class EPGListGraph(EPGListBase):
 					# user is looking at things roughly around the middle of the selected event
 					self.time_focus = ev_time + (ev_end_time - ev_time) / 2
 		else:
-			self.cur_event = None
-		self.selEntry(0)
+			self.selectedEventIndex = None
 
 	GUI_WIDGET = eListbox
 
@@ -302,8 +307,8 @@ class EPGListGraph(EPGListBase):
 		else:
 			self.l.setSelectableFunc(None)
 		instance.setWrapAround(True)
-		instance.selectionChanged.get().append(self.serviceChanged)
 		instance.setContent(self.l)
+		instance.selectionChanged.get().append(self.serviceChanged)
 		self.l.setSelectionClip(eRect(0,0,0,0), False)
 
 	def preWidgetRemove(self, instance):
@@ -311,28 +316,26 @@ class EPGListGraph(EPGListBase):
 		instance.setContent(None)
 
 	def serviceChanged(self):
-		cur_sel = self.l.getCurrentSelection()
-		if cur_sel:
-			self.selectEventFromTime()
-			self.selEntry(0)
+		self.selectEventFromTime()
+		self.refreshSelection()
 
 	def selectEventFromTime(self):
-		cur_service = self.cur_service = self.l.getCurrentSelection()
-		if cur_service:
-			self.cur_event = None
-			events = cur_service[2]
+		self.selectedService = self.l.getCurrentSelection()
+		if self.selectedService:
+			self.selectedEventIndex = None
+			events = self.selectedService[2]
 			if events and len(events):
-				self.cur_event = 0
+				self.selectedEventIndex = 0
 				if self.time_focus >= events[0][2]:
 					for event in events: #iterate all events
 						ev_time = event[2]
 						ev_end_time = ev_time + event[3]
-						self.cur_event += 1
+						self.selectedEventIndex += 1
 						if ev_time <= self.time_focus < ev_end_time:
 							break
-					self.cur_event -= 1
+					self.selectedEventIndex -= 1
 
-	def recalcEntrySize(self):
+	def recalcEventSize(self):
 		esize = self.l.getItemSize()
 		width = esize.width()
 		height = esize.height()
@@ -349,7 +352,7 @@ class EPGListGraph(EPGListBase):
 			piconWidth = w - 2 * self.serviceBorderWidth
 		self.picon_size = eSize(piconWidth, piconHeight)
 
-	def calcEntryPosAndWidthHelper(self, stime, duration, start, end, width):
+	def calcEventPosAndWidthHelper(self, stime, duration, start, end, width):
 		xpos = (stime - start) * width / (end - start)
 		ewidth = (stime + duration - start) * width / (end - start)
 		ewidth -= xpos
@@ -360,10 +363,6 @@ class EPGListGraph(EPGListBase):
 			ewidth = width - xpos
 		return xpos, ewidth
 
-	def calcEntryPosAndWidth(self, event_rect, time_base, time_epoch_secs, ev_start, ev_duration):
-		xpos, width = self.calcEntryPosAndWidthHelper(ev_start, ev_duration, time_base, time_base + time_epoch_secs, event_rect.width())
-		return xpos + event_rect.left(), width
-
 	def buildEntry(self, service, service_name, events, picon, channel):
 		r1 = self.service_rect
 		r2 = self.event_rect
@@ -371,7 +370,7 @@ class EPGListGraph(EPGListBase):
 		top = r2.top()
 		width = r2.width()
 		height = r2.height()
-		selected = self.cur_service[0] == service
+		selected = self.selectedService[0] == service
 		res = [ None ]
 
 		borderTopPix = None
@@ -383,7 +382,7 @@ class EPGListGraph(EPGListBase):
 		serviceForeColor = self.foreColorService
 		serviceBackColor = self.backColorService
 		bgpng = self.othServPix
-		if CompareWithAlternatives(service, self.currentlyPlaying and self.currentlyPlaying):
+		if CompareWithAlternatives(service, self.currentlyPlaying):
 			serviceForeColor = self.foreColorServiceNow
 			serviceBackColor = self.backColorServiceNow
 			bgpng = self.nowServPix
@@ -514,17 +513,14 @@ class EPGListGraph(EPGListBase):
 					flags = BT_SCALE))
 
 		if self.graphic:
-			if not selected and self.othEvPix:
+			# only draw the selected graphic if there are no events to fill
+			# the prevents issues with lingering selection highlights
+			png = (selected and events is None and self.selEvPix) or self.othEvPix
+			if png:
 				res.append(MultiContentEntryPixmapAlphaTest(
 					pos = (left + self.eventBorderWidth, top + self.eventBorderWidth),
 					size = (width - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
-					png = self.othEvPix,
-					flags = BT_SCALE))
-			elif selected and self.selEvPix:
-				res.append(MultiContentEntryPixmapAlphaTest(
-					pos = (left + self.eventBorderWidth, top + self.eventBorderWidth),
-					size = (width - 2 * self.eventBorderWidth, height - 2 * self.eventBorderWidth),
-					png = self.selEvPix,
+					png = png,
 					flags = BT_SCALE))
 		else:
 			res.append(MultiContentEntryText(
@@ -543,7 +539,8 @@ class EPGListGraph(EPGListBase):
 			for ev in events:  #(event_id, event_title, begin_time, duration)
 				stime = ev[2]
 				duration = ev[3]
-				xpos, ewidth = self.calcEntryPosAndWidthHelper(stime, duration, start, end, width)
+
+				xpos, ewidth = self.calcEventPosAndWidthHelper(stime, duration, start, end, width)
 				clock_types = self.getPixmapForEntry(service, ev[0], stime, duration)
 
 				foreColor = self.foreColor
@@ -566,7 +563,7 @@ class EPGListGraph(EPGListBase):
 					foreColorSel = self.foreColorNowSelected
 					backColorSel = self.backColorNowSelected
 
-				if selected and self.select_rect.left() == xpos + left:
+				if selected and self.selection_rect.left() == xpos + left:
 					if clock_types is not None:
 						clocks = self.selclocks[clock_types]
 					borderTopPix = self.borderSelectedTopPix
@@ -702,7 +699,7 @@ class EPGListGraph(EPGListBase):
 		return res
 
 	def getSelectionPosition(self,serviceref):
-		selx = self.select_rect.left()+self.select_rect.width()
+		selx = self.selection_rect.left()+self.selection_rect.width()
 		itemsperpage = self.__config('itemsperpage').value
 		indx = int(self.l.getCurrentSelectionIndex())
 		while indx+1 > itemsperpage:
@@ -714,104 +711,83 @@ class EPGListGraph(EPGListBase):
 			sely = int(sely) - int(self.listHeight)
 		return int(selx), int(sely)
 
-	# This method function is a little odd...
-	# When it is called with a non-zero dir it runs through the code in the
-	# dir != 0 part (at the top).  If this results in it moving screen-page
-	# that code calls fillEPG()/fillEPGNoRefresh(), which makes a
-	# call back here with dir=0, so the rest of the code gets run.
-	def selEntry(self, dir, visible = True):
-		cur_service = self.cur_service    #(service, service_name, events, picon)
-		self.recalcEntrySize()
-		valid_event = self.cur_event is not None
-		if cur_service:
-			update = True
-			entries = cur_service[2]
-
-			abs_time_focus = None
-			if dir == 0: #current
-				update = False
-
-			elif (dir > 0): # Move forward
-				if dir == +1:   # Next event
-					if valid_event and self.cur_event + 1 < len(entries):
-						self.setTimeFocusFromEvent(self.cur_event + 1)
-						self.l.invalidateEntry(self.l.getCurrentSelectionIndex())
-						return False    # Same page
-					# Next event is on next page, so we need to move to it
-					incr = self.time_epoch_secs
-					fevent = 0
-					norefresh = True
-				elif dir == +2: # Next page
-					incr = self.time_epoch_secs
-					fevent = None
-					norefresh = False
-				elif dir == +24: # Next day
-					incr = 86400
-					fevent = None
-					norefresh = False
-			else:           # Move back (dir < 0)
-				if dir == -1:   # Prev event
-					if valid_event and self.cur_event - 1 >= 0:
-						self.setTimeFocusFromEvent(self.cur_event - 1)
-						self.l.invalidateEntry(self.l.getCurrentSelectionIndex())
-						return False    # Same page
-					# Prev event is on prev page, so move to it iff it exists
-					# It won't exists if time_base is less than time()
-					if time() > self.time_base:
-						return False    # Nothing to do
-					incr = -self.time_epoch_secs
-					fevent = 65535
-					norefresh = True
-				else:           # Prev page or Prev day
-					fevent = None
-					norefresh = False
-					if dir == -2: # Prev page
-						target = self.time_base - self.time_epoch_secs
-					else:         # Prev day
-						target = self.time_base - 86400
-					# Work out the earliest we can go back to
-					abs0 = int(time() - int(config.epg.histminutes.value) * SECS_IN_MIN)
-					abs0 = abs0 - abs0 % self.round_by_secs
-					if target >= abs0:
-						incr = target - self.time_base
-					else:
-						incr = abs0 - self.time_base
-						# If we go back to square one with prev page/day then set the focus on
-						# now, rather than start of page
-						abs_time_focus = time()
-
-			# If we are still here and moving - do the move now and return True to
-			# indicate we've changed pages
-			if dir != 0:
-				self.time_base += incr
-				if abs_time_focus:
-					self.time_focus = abs_time_focus
-				else:
-					self.time_focus += incr
-				if norefresh:
-					self.fillEPGNoRefresh()
-				else:
-					self.fillEPG(None)
-				if fevent != None:
-					self.setTimeFocusFromEvent(fevent)
-				return True
-
-		if cur_service and valid_event and (self.cur_event+1 <= len(entries)):
-			entry = entries[self.cur_event] #(event_id, event_title, begin_time, duration)
-			xpos, width = self.calcEntryPosAndWidth(self.event_rect, self.time_base, self.time_epoch_secs, entry[2], entry[3])
-			self.select_rect = eRect(xpos ,0, width, self.event_rect.height())
-			self.l.setSelectionClip(eRect(xpos, 0, width, self.event_rect.height()), visible and update)
+	def refreshSelection(self):
+		events = self.selectedService and self.selectedService[2] #(service, service_name, events, picon)
+		if events and self.selectedEventIndex is not None and self.selectedEventIndex < len(events):
+			event = events[self.selectedEventIndex] #(event_id, event_title, begin_time, duration)
+			xpos, width = self.calcEventPosAndWidthHelper(event[2], event[3], 
+				self.time_base, self.time_base + self.time_epoch_secs, self.event_rect.width())
+			self.selection_rect = eRect(xpos + self.event_rect.left(), 0, width, self.event_rect.height())
 		else:
-			self.select_rect = self.event_rect
-			self.l.setSelectionClip(self.event_rect, False)
+			self.selection_rect = self.event_rect
+		self.l.setSelectionClip(self.selection_rect, False)
 		self.selectionChanged()
-		return False
 
-	def fillEPG(self, services, stime = None):
-		self.fillEPGNoRefresh(services, stime)
-		self.selEntry(0)
+	def selEvent(self, dir, visible = True):
+		if not self.selectedService:
+			return False
 
-	def fillEPGNoRefresh(self, services = None, stime = None):
+		valid_event = self.selectedEventIndex is not None
+		focus_event = None
+		time_base = self.time_base
+		time_focus = self.time_focus
+		if dir == +1:   # Next event
+			events = self.selectedService[2] #(service, service_name, events, picon)
+			if valid_event and self.selectedEventIndex + 1 < len(events):
+				self.setTimeFocusFromEvent(self.selectedEventIndex + 1)
+				self.refreshSelection()
+				self.l.invalidateEntry(self.l.getCurrentSelectionIndex())
+				return False    # Same page
+			# Next event is the first item on the next page
+			time_base += self.time_epoch_secs
+			focus_event = 0
+		elif dir == -1:   # Prev event
+			if valid_event and self.selectedEventIndex > 0:
+				self.setTimeFocusFromEvent(self.selectedEventIndex - 1)
+				self.refreshSelection()
+				self.l.invalidateEntry(self.l.getCurrentSelectionIndex())
+				return False    # Same page
+			# Prev event is the last item on the previous page
+			time_base -= self.time_epoch_secs
+			focus_event = 65535
+		elif dir == +2: # Next page
+			time_base += self.time_epoch_secs
+			time_focus += self.time_epoch_secs
+		elif dir == +24: # Next day
+			time_base += 86400
+			time_focus += 86400
+		elif dir == -2:
+			time_base -= self.time_epoch_secs
+			time_focus -= self.time_epoch_secs
+		elif dir == -24: # Prevous day
+			# keep the time base within the bounds of EPG data, rounded to a whole page
+			abs0 = int(time() - int(config.epg.histminutes.value) * SECS_IN_MIN)
+			abs0 += -abs0 % self.round_by_secs
+			time_base = max(abs0, time_base - 86400)
+			time_focus = max(abs0, time_focus - 86400)
+
+		if time_base < self.time_base:
+			# Prevent scrolling if it'll go past the EPG history limit
+			# Work out the earliest we can go back to
+			abs0 = int(time() - int(config.epg.histminutes.value) * SECS_IN_MIN)
+			if time_base < abs0 - 3 * self.time_epoch_secs // 4:
+				return False
+
+		# If we are still here and moving - do the move now and return True to
+		# indicate we've changed pages
+		self.time_base = time_base
+		self.time_focus = time_focus
+		self.fillEPGNoRefresh()
+		if focus_event is not None:
+			self.setTimeFocusFromEvent(focus_event)
+		self.refreshSelection()
+		return True
+
+	def fillEPG(self):
+		self.fillEPGNoRefresh()
+		self.refreshSelection()
+
+	def fillEPGNoRefresh(self, services = None):
 		if not self.graphicsloaded:
 			if self.graphic:
 				self.nowEvPix = loadPNG(resolveFilename(SCOPE_ACTIVE_SKIN, 'epg/CurrentEvent.png'))
@@ -839,50 +815,47 @@ class EPGListGraph(EPGListBase):
 
 			self.graphicsloaded = True
 
-		if stime is not None:
-			self.time_base = int(stime)
 		if services is None:
 			test = [ (service[0], 0, self.time_base, self.time_epoch) for service in self.list ]
 			serviceList = self.list
 			piconIdx = 3
 			channelIdx = 4
 		else:
-			self.cur_event = None
-			self.cur_service = None
+			self.selectedEventIndex = None
+			self.selectedService = None
 			test = [ (service.ref.toString(), 0, self.time_base, self.time_epoch) for service in services ]
 			serviceList = services
 			piconIdx = 0
-			channelIdx = None
+			channelIdx = 0
 
 		test.insert(0, 'XRnITBD') #return record, service ref, service name, event id, event title, begin time, duration
 		epg_data = self.queryEPG(test)
 		self.list = [ ]
-		tmp_list = None
-		service = ""
-		sname = ""
+		event_list = None
+		serviceRef = ""
+		serviceName = ""
+
+		def appendService():
+			picon = None if piconIdx == 0 else serviceList[serviceIdx][piconIdx]
+			# We pass the serviceref if we don't have the channel number yet, so it can be grabbed
+			channel = serviceList[serviceIdx] if channelIdx == 0 else serviceList[serviceIdx][channelIdx]
+			self.list.append((serviceRef, serviceName, event_list[0][0] is not None and event_list or None, picon, channel))
 
 		serviceIdx = 0
 		for x in epg_data:
-			if service != x[0]:
-				if tmp_list is not None:
-					picon = None if piconIdx == 0 else serviceList[serviceIdx][piconIdx]
-					# We pass the serviceref if we don't have the channel number yet, so it can be grabbed
-					channel = serviceList[serviceIdx] if (channelIdx == None) else serviceList[serviceIdx][channelIdx]
-					self.list.append((service, sname, tmp_list[0][0] is not None and tmp_list or None, picon, channel))
+			if serviceRef != x[0]:
+				if event_list:
+					appendService()
 					serviceIdx += 1
-				service = x[0]
-				sname = x[1]
-				tmp_list = [ ]
-			tmp_list.append((x[2], x[3], x[4], x[5])) #(event_id, event_title, begin_time, duration)
-		if tmp_list and len(tmp_list):
-			picon = None if piconIdx == 0 else serviceList[serviceIdx][piconIdx]
-			channel = serviceList[serviceIdx] if (channelIdx == None) else serviceList[serviceIdx][channelIdx]
-			self.list.append((service, sname, tmp_list[0][0] is not None and tmp_list or None, picon, channel))
-			serviceIdx += 1
+				serviceRef = x[0]
+				serviceName = x[1]
+				event_list = [ ]
+			event_list.append((x[2], x[3], x[4], x[5])) #(event_id, event_title, begin_time, duration)
+		if event_list and len(event_list) > 0:
+			appendService()
 
 		self.l.setList(self.list)
-		self.recalcEntrySize()
-		self.selectEventFromTime()
+		self.recalcEventSize()
 
 	def getChannelNumber(self,service):
 		if hasattr(service, "ref") and service.ref and '0:0:0:0:0:0:0:0:0' not in service.ref.toString():

@@ -70,7 +70,7 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self.show()
 
-	def refreshlist(self):
+	def refreshList(self):
 		self.refreshTimer.stop()
 		try:
 			service = ServiceReference(self.servicelist.getCurrentSelection())

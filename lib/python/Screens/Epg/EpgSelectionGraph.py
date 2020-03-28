@@ -37,9 +37,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		type = EPG_TYPE_GRAPH if EPGtype == 'graph' else EPG_TYPE_INFOBARGRAPH
 		EPGSelectionBase.__init__(self, type, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
 
-		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
 		graphic = self.__config('type_mode').value == "graphics"
-		self.ask_time = now - now % (int(self.__config('roundto').value) * SECS_IN_MIN)
 		if self.type == EPG_TYPE_GRAPH:
 			if not config.epgselection.graph_pig.value:
 				self.skinName = 'GraphicalEPG'
@@ -108,6 +106,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self['input_actions'].csel = self
 
 		self['list'] = EPGListGraph(type=self.type, selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer, graphic=graphic)
+		self['list'].setTimeFocus(time())
 
 	def createSetup(self):
 		self.closeEventViewDialog()
@@ -124,12 +123,8 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			self.close('reopeninfobargraph')
 
 	def onCreate(self):
-		print "[EPGSelectionGraph] onCreate"
-		self['list'].recalcEntrySize()
-		self.getCurrentCursorLocation = None
+		self['list'].recalcEventSize()
 		self.BouquetRoot = self.startBouquet.toString().startswith('1:7:0')
-		# set time_base on grid widget so that timeline shows correct time
-		self['list'].time_base = self.ask_time
 		self['timeline_text'].setEntries(self['list'], self['timeline_now'], self.time_lines, False)
 		self['lab1'].show()
 		self.show()
@@ -138,22 +133,18 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.listTimer.start(1, True)
 
 	def loadEPGData(self):
-		print "[EPGSelectionGraph] loadEPGData"
 		serviceref = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 		self._populateBouquetList()
-		self['list'].fillEPGNoRefresh(self.services, self.ask_time)
+		self['list'].fillEPGNoRefresh(self.services)
 		if self.type == EPG_TYPE_INFOBARGRAPH or not config.epgselection.graph_channel1.value:
 			self['list'].moveToService(serviceref)
 		self['list'].setCurrentlyPlaying(serviceref)
 		self.moveTimeLines()
 		self['lab1'].hide()
 
-	def refreshlist(self):
+	def refreshList(self):
 		self.refreshTimer.stop()
-		if self.getCurrentCursorLocation:
-			self.ask_time = self.getCurrentCursorLocation
-			self.getCurrentCursorLocation = None
-		self['list'].fillEPG(None, self.ask_time)
+		self['list'].fillEPG()
 		self.moveTimeLines()
 
 	def togglePIG(self):
@@ -166,8 +157,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.close('reopengraph')
 
 	def updEvent(self, dir, visible = True):
-		ret = self['list'].selEntry(dir, visible)
-		if ret:
+		if self['list'].selEvent(dir, visible):
 			self.moveTimeLines(True)
 
 	def moveTimeLines(self, force = False):
@@ -205,12 +195,8 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 
 	def bouquetChanged(self):
 		self.BouquetRoot = False
-		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
-		self.ask_time = now - now % (int(self.__config('roundto').value) * SECS_IN_MIN)
-		self['list'].setTimeFocus(time())
-		self['list'].fillEPG(self.services, self.ask_time)
-		self.moveTimeLines(True)
+		self.goToTime(time())
 		self['list'].instance.moveSelectionTo(0)
 		self.setTitle(self['bouquetlist'].getCurrentBouquet())
 
@@ -230,14 +216,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 
 	def onDateTimeInputClosed(self, ret):
 		if len(ret) > 1 and ret[0]:
-			self.ask_time = ret[1]
-			now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-			self.ask_time -= self.ask_time % (int(self.__config('roundto').value) * SECS_IN_MIN)
-			l = self['list']
-			# place the entered time halfway across the grid
-			l.setTimeFocus(self.ask_time)
-			l.fillEPG(None, self.ask_time - l.getTimeEpoch() * SECS_IN_MIN / 2)
-			self.moveTimeLines(True)
+			self.goToTime(ret[1])
 		if self.eventviewDialog and self.type == EPG_TYPE_INFOBARGRAPH:
 			self.infoKeyPressed(True)
 
@@ -297,24 +276,26 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.updEvent(+2)
 
 	def goToCurrentTime(self):
-		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
-		self.ask_time = now - now % (int(self.__config('roundto').value) * SECS_IN_MIN)
-		self['list'].setTimeFocus(time())
-		self['list'].fillEPG(None, self.ask_time)
-		self.moveTimeLines(True)
+		self.goToTime(time())
 
 	def goToPrimeTime(self):
 		basetime = localtime(self['list'].getTimeBase())
 		basetime = (basetime[0], basetime[1], basetime[2], int(self.__config('primetimehour').value), int(self.__config('primetimemins').value), 0, basetime[6], basetime[7], basetime[8])
-		self.ask_time = mktime(basetime)
-		if self.ask_time + 3600 < time():
-			self.ask_time += 86400
-		self['list'].fillEPG(None, self.ask_time)
-		self.moveTimeLines(True)
+		primetime = mktime(basetime)
+		if primetime + 3600 < time():
+			primetime += 86400
+		self.goToTime(primetime)
 
 	def goToCurrentTimeAndTop(self):
 		self.toTop()
 		self.goToCurrentTime()
+
+	def goToTime(self, time):
+		l = self['list']
+		# place the entered time halfway across the grid
+		l.setTimeFocus(time)
+		l.fillEPG()
+		self.moveTimeLines(True)
 
 	def toggleNumberOfRows(self):
 		if self.type == EPG_TYPE_GRAPH:
@@ -323,6 +304,6 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			else:
 				config.epgselection.graph_heightswitch.setValue(True)
 			self['list'].setItemsPerPage()
-			self['list'].fillEPG(None)
+			self['list'].fillEPG()
 			self.moveTimeLines()
 

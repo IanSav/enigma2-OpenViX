@@ -22,6 +22,8 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 		EPGBouquetSelection.__init__(self, False)
 
 		self.skinName = 'EPGSelectionMulti'
+		self.ask_time = -1
+
 		self['now_button'] = Pixmap()
 		self['next_button'] = Pixmap()
 		self['more_button'] = Pixmap()
@@ -84,7 +86,7 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 		self['list'].setCurrentlyPlaying(serviceref)
 		self['lab1'].hide()
 
-	def refreshlist(self):
+	def refreshList(self):
 		self.refreshTimer.stop()
 		self['list'].fillEPG(self.services, self.ask_time)
 

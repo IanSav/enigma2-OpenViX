@@ -29,7 +29,7 @@ class EPGSelectionSimilar(EPGSelectionBase):
 		self['lab1'].show()
 		self.show()
 
-	def refreshlist(self):
+	def refreshList(self):
 		self.refreshTimer.stop()
 
 	def infoKeyPressed(self, eventviewopen=False):

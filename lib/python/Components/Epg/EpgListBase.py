@@ -26,7 +26,6 @@ class EPGListBase(GUIComponent):
 		print "[EPGListBase] Init"
 		GUIComponent.__init__(self)
 
-		self.time_base = None
 		self.currentlyPlaying = None
 		self.timer = timer
 		self.onSelChanged = [ ]
@@ -160,6 +159,3 @@ class EPGListBase(GUIComponent):
 
 	def queryEPG(self, list):
 		return self.epgcache.lookupEvent(list)
-
-	def getCurrentCursorLocation(self):
-		return self.time_base

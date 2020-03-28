@@ -66,7 +66,7 @@ class EPGSelectionInfobar(EPGSelectionBase):
 		self['lab1'].show()
 		self.show()
 
-	def refreshlist(self):
+	def refreshList(self):
 		self.refreshTimer.stop()
 		try:
 			service = ServiceReference(self.servicelist.getCurrentSelection())

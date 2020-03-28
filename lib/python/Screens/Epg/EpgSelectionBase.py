@@ -50,7 +50,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.startRef = startRef
 		self.servicelist = None
 		self.ChoiceBoxDialog = None
-		self.ask_time = -1
 		self.closeRecursive = False
 		self.eventviewDialog = None
 		self.eventviewWasShown = False
@@ -68,10 +67,10 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self['lab1'] = Label(_('Please wait while gathering EPG data...'))
 		self['lab1'].hide()
 		self.key_green_choice = self.EMPTY
-		self['key_red'] = Button(_('IMDb search'))
-		self['key_green'] = Button(_('Add timer'))
-		self['key_yellow'] = Button(_('EPG search'))
-		self['key_blue'] = Button(_('Add Autotimer'))
+		self['key_red'] = Button(_('IMDb Search'))
+		self['key_green'] = Button(_('Add Timer'))
+		self['key_yellow'] = Button(_('EPG Search'))
+		self['key_blue'] = Button(_('Add AutoTimer'))
 		self['dialogactions'] = HelpableActionMap(self, 'WizardActions',
 			{
 				'back': (self.closeChoiceBoxDialog, _('Close dialog')),
@@ -94,7 +93,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 				'greenlong': (self.greenButtonPressedLong, _('Show timer list')),
 				'yellow': (self.yellowButtonPressed, _('Search for similar events')),
 				'blue': (self.blueButtonPressed, _('Add an autotimer for current event')),
-				'bluelong': (self.blueButtonPressedLong, _('Show Autotimer list'))
+				'bluelong': (self.blueButtonPressedLong, _('Show autotimer list'))
 			}, -1)
 		self['colouractions'].csel = self
 		self['recordingactions'] = HelpableActionMap(self, 'InfobarInstantRecord',
@@ -105,7 +104,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self['recordingactions'].csel = self
 
 		self.refreshTimer = eTimer()
-		self.refreshTimer.timeout.get().append(self.refreshlist)
+		self.refreshTimer.timeout.get().append(self.refreshList)
 		self.onLayoutFinish.append(self.onCreate)
 
 	def getBouquetServices(self, bouquet):
@@ -275,7 +274,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			addAutotimerFromEventSilent(self.session, evt=event, service=serviceref)
 			self.refreshTimer.start(3000)
 		except ImportError:
-			self.session.open(MessageBox, _('The Autotimer plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
+			self.session.open(MessageBox, _('The AutoTimer plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
 
 	def showTimerList(self):
 		from Screens.TimerEdit import TimerEditList
@@ -301,7 +300,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			from Plugins.Extensions.AutoTimer.AutoTimerOverview import AutoTimerOverview
 			self.session.openWithCallback(self.editCallback, AutoTimerOverview, autotimer)
 		except ImportError:
-			self.session.open(MessageBox, _('The Autotimer plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
+			self.session.open(MessageBox, _('The AutoTimer plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
 
 	def editCallback(self, session):
 		global autopoller
@@ -330,8 +329,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.session.nav.RecordTimer.removeEntry(timer)
 		self['key_green'].setText(_('Add Timer'))
 		self.key_green_choice = self.ADD_TIMER
-		self.getCurrentCursorLocation = self['list'].getCurrentCursorLocation()
-		self.refreshlist()
+		self.refreshList()
 
 	def disableTimer(self, timer):
 		self.closeChoiceBoxDialog()
@@ -339,8 +337,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.session.nav.RecordTimer.timeChanged(timer)
 		self['key_green'].setText(_('Add Timer'))
 		self.key_green_choice = self.ADD_TIMER
-		self.getCurrentCursorLocation = self['list'].getCurrentCursorLocation()
-		self.refreshlist()
+		self.refreshList()
 
 	def RecordTimerQuestion(self, manual=False):
 		cur = self['list'].getCurrent()
@@ -356,7 +353,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 				cb_func1 = lambda ret: self.removeTimer(timer)
 				cb_func2 = lambda ret: self.editTimer(timer)
 				cb_func3 = lambda ret: self.disableTimer(timer)
-				menu = [(_("Delete timer"), 'CALLFUNC', self.RemoveChoiceBoxCB, cb_func1), (_("Edit timer"), 'CALLFUNC', self.RemoveChoiceBoxCB, cb_func2), (_("Disable timer"), 'CALLFUNC', self.RemoveChoiceBoxCB, cb_func3)]
+				menu = [(_("Delete Timer"), 'CALLFUNC', self.RemoveChoiceBoxCB, cb_func1), (_("Edit Timer"), 'CALLFUNC', self.RemoveChoiceBoxCB, cb_func2), (_("Disable Timer"), 'CALLFUNC', self.RemoveChoiceBoxCB, cb_func3)]
 				title = _("Select action for timer %s:") % event.getEventName()
 				break
 		else:
@@ -468,13 +465,12 @@ class EPGSelectionBase(Screen, HelpableScreen):
 							simulTimerList = self.session.nav.RecordTimer.record(entry)
 					if simulTimerList is not None:
 						self.session.openWithCallback(self.finishSanityCorrection, TimerSanityConflict, simulTimerList)
-			self["key_green"].setText(_("Change timer"))
+			self["key_green"].setText(_("Change Timer"))
 			self.key_green_choice = self.REMOVE_TIMER
 		else:
 			self['key_green'].setText(_('Add Timer'))
 			self.key_green_choice = self.ADD_TIMER
-		self.getCurrentCursorLocation = self['list'].getCurrentCursorLocation()
-		self.refreshlist()
+		self.refreshList()
 
 	def finishSanityCorrection(self, answer):
 		self.finishedAdd(answer)
@@ -539,7 +535,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 				isRecordEvent = True
 				break
 		if isRecordEvent and self.key_green_choice != self.REMOVE_TIMER:
-			self["key_green"].setText(_("Change timer"))
+			self["key_green"].setText(_("Change Timer"))
 			self.key_green_choice = self.REMOVE_TIMER
 		elif not isRecordEvent and self.key_green_choice != self.ADD_TIMER:
 			self['key_green'].setText(_('Add Timer'))
