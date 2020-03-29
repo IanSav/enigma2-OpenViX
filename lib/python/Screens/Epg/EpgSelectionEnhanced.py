@@ -10,14 +10,13 @@ from Components.config import config, configfile, ConfigClock
 from Components.Epg.EpgListSingle import EPGListSingle
 from Components.Epg.EpgListBase import EPG_TYPE_ENHANCED
 from EpgSelectionBase import EPGSelectionBase, EPGServiceNumberSelection
-from Screens.EventView import EventViewEPGSelect
 from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
 class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
-	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB = None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
+	def __init__(self, session, servicelist, zapFunc, startBouquet, startRef, bouquets):
 		print "[EPGSelectionEnhanced] ------- NEW VERSION -------"
-		EPGSelectionBase.__init__(self, EPG_TYPE_ENHANCED, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
+		EPGSelectionBase.__init__(self, EPG_TYPE_ENHANCED, session, zapFunc, None, None, startBouquet, startRef, bouquets)
 		EPGServiceNumberSelection.__init__(self)
 
 		self.skinName = 'EPGSelection'
@@ -72,34 +71,21 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 
 	def refreshList(self):
 		self.refreshTimer.stop()
-		try:
-			service = ServiceReference(self.servicelist.getCurrentSelection())
-			if not self.cureventindex:
-				index = self['list'].getCurrentIndex()
-			else:
-				index = self.cureventindex
-				self.cureventindex = None
-			self['list'].fillEPG(service)
-			self['list'].sortEPG(int(config.epgselection.sort.value))
-			self['list'].setCurrentIndex(index)
-		except:
-			pass
+		service = ServiceReference(self.servicelist.getCurrentSelection())
+		index = self['list'].getCurrentIndex()
+		self['list'].fillEPG(service)
+		self['list'].sortEPG(int(config.epgselection.sort.value))
+		self['list'].setCurrentIndex(index)
 
 	def nextBouquet(self):
-		self.CurrBouquet = self.servicelist.getCurrentSelection()
-		self.CurrService = self.servicelist.getRoot()
 		self.servicelist.nextBouquet()
 		self.onCreate()
 
 	def prevBouquet(self):
-		self.CurrBouquet = self.servicelist.getCurrentSelection()
-		self.CurrService = self.servicelist.getRoot()
 		self.servicelist.prevBouquet()
 		self.onCreate()
 
 	def nextService(self):
-		self.CurrBouquet = self.servicelist.getCurrentSelection()
-		self.CurrService = self.servicelist.getRoot()
 		self['list'].instance.moveSelectionTo(0)
 		if self.servicelist.inBouquet():
 			prev = self.servicelist.getCurrentSelection()
@@ -127,8 +113,6 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 		return not current.ref.flags & (eServiceReference.isMarker | eServiceReference.isDirectory)
 
 	def prevService(self):
-		self.CurrBouquet = self.servicelist.getCurrentSelection()
-		self.CurrService = self.servicelist.getRoot()
 		self['list'].instance.moveSelectionTo(0)
 		if self.servicelist.inBouquet():
 			prev = self.servicelist.getCurrentSelection()
@@ -151,25 +135,12 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 		else:
 			self.prevService()
 
-	def infoKeyPressed(self, eventviewopen=False):
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		service = cur[1]
-		if event is not None and not self.eventviewDialog and not eventviewopen:
-			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=self.openSimilarList)
-		elif self.eventviewDialog and not eventviewopen:
-			self.eventviewDialog.hide()
-			del self.eventviewDialog
-			self.eventviewDialog = None
-
 	def eventViewCallback(self, setEvent, setService, val):
-		l = self['list']
-		old = l.getCurrent()
 		if val == -1:
 			self.moveUp()
 		elif val == +1:
 			self.moveDown()
-		cur = l.getCurrent()
+		cur = self['list'].getCurrent()
 		setService(cur[1])
 		setEvent(cur[0])
 

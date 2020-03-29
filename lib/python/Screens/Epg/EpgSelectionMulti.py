@@ -8,7 +8,6 @@ from Components.Epg.EpgListBase import EPG_TYPE_MULTI
 from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
 from Components.Label import Label
 from Components.Pixmap import Pixmap
-from Screens.EventView import EventViewEPGSelect
 from Screens.Setup import Setup
 
 # Various value are in minutes, while others are in seconds.
@@ -124,17 +123,6 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 		if len(ret) > 1 and ret[0]:
 			self.ask_time = ret[1]
 			self['list'].fillEPG(self.services, self.ask_time)
-
-	def infoKeyPressed(self, eventviewopen=False):
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		service = cur[1]
-		if event is not None and not self.eventviewDialog and not eventviewopen:
-			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=self.openSimilarList)
-		elif self.eventviewDialog and not eventviewopen:
-			self.eventviewDialog.hide()
-			del self.eventviewDialog
-			self.eventviewDialog = None
 
 	def eventViewCallback(self, setEvent, setService, val):
 		l = self['list']

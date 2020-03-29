@@ -9,13 +9,12 @@ class EPGSelectionSimilar(EPGSelectionBase):
 		print "[EPGSelectionSimilar] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_SIMILAR, session)
 
+		self.skinName = 'EPGSelection'
 		self.currentService = service
 		self.eventid = eventid
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
 			{
-				'info': (self.Info, _('Show detailed event info')),
-				'infolong': (self.InfoLong, _('Show single epg for current channel')),
-				'menu': (self.createSetup, _('Setup menu'))
+				'infolong': (self.InfoLong, _('Show single epg for current channel'))
 			}, -1)
 		self['epgactions'].csel = self
 
@@ -26,11 +25,7 @@ class EPGSelectionSimilar(EPGSelectionBase):
 	def onCreate(self):
 		self['list'].recalcEntrySize()
 		self['list'].fillSimilarList(self.currentService, self.eventid)
-		self['lab1'].show()
 		self.show()
 
 	def refreshList(self):
 		self.refreshTimer.stop()
-
-	def infoKeyPressed(self, eventviewopen=False):
-		pass

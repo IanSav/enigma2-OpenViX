@@ -6,14 +6,13 @@ from Components.Epg.EpgListSingle import EPGListSingle
 from Components.Epg.EpgListBase import EPG_TYPE_INFOBAR
 from EpgSelectionBase import EPGSelectionBase
 from Components.Sources.Event import Event
-from Screens.EventView import EventViewEPGSelect, EventViewSimple
 from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
 class EPGSelectionInfobar(EPGSelectionBase):
-	def __init__(self, session, servicelist = None, zapFunc = None, bouquetChangeCB=None, serviceChangeCB = None, startBouquet = None, startRef = None, bouquets = None):
+	def __init__(self, session, servicelist, zapFunc):
 		print "[EPGSelectionInfobar] ------- NEW VERSION -------"
-		EPGSelectionBase.__init__(self, EPG_TYPE_INFOBAR, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
+		EPGSelectionBase.__init__(self, EPG_TYPE_INFOBAR, session, zapFunc)
 
 		self.skinName = 'QuickEPG'
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
@@ -36,9 +35,7 @@ class EPGSelectionInfobar(EPGSelectionBase):
 				'down': (self.moveDown, _('Go to next channel'))
 			}, -1)
 		self['epgcursoractions'].csel = self
-		self.list = []
 		self.servicelist = servicelist
-		self.currentService = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 
 		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
 			itemsPerPageConfig = config.epgselection.infobar_itemsperpage,
@@ -68,18 +65,11 @@ class EPGSelectionInfobar(EPGSelectionBase):
 
 	def refreshList(self):
 		self.refreshTimer.stop()
-		try:
-			service = ServiceReference(self.servicelist.getCurrentSelection())
-			if not self.cureventindex:
-				index = self['list'].getCurrentIndex()
-			else:
-				index = self.cureventindex
-				self.cureventindex = None
-			self['list'].fillEPG(service)
-			self['list'].sortEPG(int(config.epgselection.sort.value))
-			self['list'].setCurrentIndex(index)
-		except:
-			pass
+		service = ServiceReference(self.servicelist.getCurrentSelection())
+		index = self['list'].getCurrentIndex()
+		self['list'].fillEPG(service)
+		self['list'].sortEPG(int(config.epgselection.sort.value))
+		self['list'].setCurrentIndex(index)
 
 	def bouquetChanged(self):
 		self.BouquetRoot = False
@@ -91,21 +81,15 @@ class EPGSelectionInfobar(EPGSelectionBase):
 
 	def nextBouquet(self):
 		if config.usage.multibouquet.value:
-			self.CurrBouquet = self.servicelist.getCurrentSelection()
-			self.CurrService = self.servicelist.getRoot()
 			self.servicelist.nextBouquet()
 			self.onCreate()
 
 	def prevBouquet(self):
 		if config.usage.multibouquet.value:
-			self.CurrBouquet = self.servicelist.getCurrentSelection()
-			self.CurrService = self.servicelist.getRoot()
 			self.servicelist.prevBouquet()
 			self.onCreate()
 
 	def nextService(self):
-		self.CurrBouquet = self.servicelist.getCurrentSelection()
-		self.CurrService = self.servicelist.getRoot()
 		self['list'].instance.moveSelectionTo(0)
 		if self.servicelist.inBouquet():
 			prev = self.servicelist.getCurrentSelection()
@@ -133,8 +117,6 @@ class EPGSelectionInfobar(EPGSelectionBase):
 		return not current.ref.flags & (eServiceReference.isMarker | eServiceReference.isDirectory)
 
 	def prevService(self):
-		self.CurrBouquet = self.servicelist.getCurrentSelection()
-		self.CurrService = self.servicelist.getRoot()
 		self['list'].instance.moveSelectionTo(0)
 		if self.servicelist.inBouquet():
 			prev = self.servicelist.getCurrentSelection()
@@ -156,21 +138,6 @@ class EPGSelectionInfobar(EPGSelectionBase):
 				self.prevService()
 		else:
 			self.prevService()
-
-	def infoKeyPressed(self, eventviewopen=False):
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		service = cur[1]
-		if event is not None and not self.eventviewDialog and not eventviewopen:
-			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=self.openSimilarList)
-		elif self.eventviewDialog and not eventviewopen:
-			self.eventviewDialog.hide()
-			del self.eventviewDialog
-			self.eventviewDialog = None
-		elif event is not None and self.eventviewDialog and eventviewopen:
-			self.eventviewDialog.hide()
-			self.eventviewDialog = self.session.instantiateDialog(EventViewSimple,event, service, skin='InfoBarEventView')
-			self.eventviewDialog.show()
 
 	def eventViewCallback(self, setEvent, setService, val):
 		l = self['list']

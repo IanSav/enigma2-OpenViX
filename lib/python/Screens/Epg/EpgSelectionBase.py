@@ -12,6 +12,7 @@ from Components.Label import Label
 from Components.Sources.ServiceEvent import ServiceEvent
 from Components.Sources.Event import Event
 from Components.UsageConfig import preferredTimerPath
+from Screens.EventView import EventViewEPGSelect
 from Screens.TimerEdit import TimerSanityConflict
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
@@ -55,10 +56,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.eventviewWasShown = False
 		self.currch = None
 		self.session.pipshown = False
-		self.cureventindex = None
 		self.pipServiceRelation = getRelationDict() if plugin_PiPServiceRelation_installed else {}
-		self.CurrBouquet = None
-		self.CurrService = None
 		self.BouquetRoot = False
 		self["number"] = Label()
 		self["number"].hide()
@@ -144,6 +142,13 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		else:
 			return self.servicelist.getRoot()
 
+	def infoKeyPressed(self):
+		cur = self['list'].getCurrent()
+		event = cur[0]
+		service = cur[1]
+		if event is not None:
+			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=self.openSimilarList)
+
 	def redButtonPressed(self):
 		self.closeEventViewDialog()
 		from Screens.InfoBar import InfoBar
@@ -194,6 +199,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			self.showAutoTimerList()
 
 	def openSimilarList(self, eventid, refstr):
+		from Screens.Epg.EpgSelectionSimilar import EPGSelectionSimilar
 		self.session.open(EPGSelectionSimilar, refstr, eventid)
 
 	# possibly unused
@@ -205,11 +211,9 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.currentService = service
 		self.onCreate()
 
-	def eventSelected(self):
-		self.infoKeyPressed()
-
 	def enterDateTime(self):
 		if not EPGSelectionBase.lastEnteredTime:
+			# the stored date and time is shared by all EPG types
 			EPGSelectionBase.lastEnteredTime = ConfigClock(default=time())
 			EPGSelectionBase.lastEnteredDate = ConfigDateTime(default=time(), formatstring=config.usage.date.full.value, increment=86400)
 		self.session.openWithCallback(self.onDateTimeInputClosed, TimeDateInput, EPGSelectionBase.lastEnteredTime, EPGSelectionBase.lastEnteredDate)
@@ -540,8 +544,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		elif not isRecordEvent and self.key_green_choice != self.ADD_TIMER:
 			self['key_green'].setText(_('Add Timer'))
 			self.key_green_choice = self.ADD_TIMER
-		if self.eventviewDialog and (self.type == EPG_TYPE_INFOBAR or self.type == EPG_TYPE_INFOBARGRAPH):
-			self.infoKeyPressed(True)
 
 	def setServicelistSelection(self, bouquet, service):
 		if self.servicelist:
@@ -712,8 +714,6 @@ class EPGServiceNumberSelection:
 		self.zaptoservicename = ServiceReference(self.service).getServiceName()
 
 	def zapToNumber(self, service, bouquet):
-		self.CurrBouquet = bouquet
-		self.CurrService = service
 		if service is not None:
 			self.setServicelistSelection(bouquet, service)
 		self.onCreate()

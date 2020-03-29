@@ -15,7 +15,7 @@ from Components.Sources.ServiceEvent import ServiceEvent
 from Components.Sources.Event import Event
 from Components.UsageConfig import preferredTimerPath
 from Screens.TimerEdit import TimerSanityConflict
-from Screens.EventView import EventViewEPGSelect, EventViewSimple
+from Screens.EventView import EventViewSimple
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
 from Screens.PictureInPicture import PictureInPicture
@@ -217,28 +217,31 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 	def onDateTimeInputClosed(self, ret):
 		if len(ret) > 1 and ret[0]:
 			self.goToTime(ret[1])
-		if self.eventviewDialog and self.type == EPG_TYPE_INFOBARGRAPH:
-			self.infoKeyPressed(True)
 
-	def infoKeyPressed(self, eventviewopen=False):
+	def infoKeyPressed(self):
+		if self.type == EPG_TYPE_GRAPH:
+			EPGSelectionBase.infoKeyPressed(self)
+		else: # EPG_TYPE_INFOBARGRAPH
+			if self.eventviewDialog:
+				self.eventviewDialog.hide()
+				del self.eventviewDialog
+				self.eventviewDialog = None
+			else:
+				self.openEventViewDialog()
+
+	def onSelectionChanged(self):
+		EPGSelectionBase.onSelectionChanged(self)
+		if self.eventviewDialog:
+			self.eventviewDialog.hide()
+			self.openEventViewDialog()
+	
+	def openEventViewDialog(self):
 		cur = self['list'].getCurrent()
 		event = cur[0]
 		service = cur[1]
-		if event is not None and not self.eventviewDialog and not eventviewopen:
-			if self.type == EPG_TYPE_INFOBARGRAPH:
-				self.eventviewDialog = self.session.instantiateDialog(EventViewSimple,event, service, skin='InfoBarEventView')
-				self.eventviewDialog.show()
-			else:
-				self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=self.openSimilarList)
-		elif self.eventviewDialog and not eventviewopen:
-			self.eventviewDialog.hide()
-			del self.eventviewDialog
-			self.eventviewDialog = None
-		elif event is not None and self.eventviewDialog and eventviewopen:
-			if self.type == EPG_TYPE_INFOBARGRAPH:
-				self.eventviewDialog.hide()
-				self.eventviewDialog = self.session.instantiateDialog(EventViewSimple,event, service, skin='InfoBarEventView')
-				self.eventviewDialog.show()
+		if event is not None:
+			self.eventviewDialog = self.session.instantiateDialog(EventViewSimple, event, service, skin='InfoBarEventView')
+			self.eventviewDialog.show()
 
 	def eventViewCallback(self, setEvent, setService, val):
 		l = self['list']

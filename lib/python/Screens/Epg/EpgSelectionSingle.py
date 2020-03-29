@@ -3,7 +3,6 @@ from Components.config import config, configfile
 from Components.Epg.EpgListSingle import EPGListSingle
 from Components.Epg.EpgListBase import EPG_TYPE_SINGLE
 from EpgSelectionBase import EPGSelectionBase
-from Screens.EventView import EventViewEPGSelect
 from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
@@ -57,38 +56,18 @@ class EPGSelectionSingle(EPGSelectionBase):
 
 	def refreshList(self):
 		self.refreshTimer.stop()
-		try:
-			service = self.currentService
-			if not self.cureventindex:
-				index = self['list'].getCurrentIndex()
-			else:
-				index = self.cureventindex
-				self.cureventindex = None
-			self['list'].fillEPG(service)
-			self['list'].sortEPG(int(config.epgselection.sort.value))
-			self['list'].setCurrentIndex(index)
-		except:
-			pass
-
-	def infoKeyPressed(self, eventviewopen=False):
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		service = cur[1]
-		if event is not None and not self.eventviewDialog and not eventviewopen:
-			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=self.openSimilarList)
-		elif self.eventviewDialog and not eventviewopen:
-			self.eventviewDialog.hide()
-			del self.eventviewDialog
-			self.eventviewDialog = None
+		service = self.currentService
+		index = self['list'].getCurrentIndex()
+		self['list'].fillEPG(service)
+		self['list'].sortEPG(int(config.epgselection.sort.value))
+		self['list'].setCurrentIndex(index)
 
 	def eventViewCallback(self, setEvent, setService, val):
-		l = self['list']
-		old = l.getCurrent()
 		if val == -1:
 			self.moveUp()
 		elif val == +1:
 			self.moveDown()
-		cur = l.getCurrent()
+		cur = self['list'].getCurrent()
 		setService(cur[1])
 		setEvent(cur[0])
 
