@@ -783,8 +783,8 @@ class EPGListGraph(EPGListBase):
 		self.refreshSelection()
 		return True
 
-	def fillEPG(self):
-		self.fillEPGNoRefresh()
+	def fillEPG(self, services = None):
+		self.fillEPGNoRefresh(services)
 		self.refreshSelection()
 
 	def fillEPGNoRefresh(self, services = None):

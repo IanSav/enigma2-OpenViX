@@ -196,8 +196,10 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 	def bouquetChanged(self):
 		self.BouquetRoot = False
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
-		self.goToTime(time())
-		self['list'].instance.moveSelectionTo(0)
+		l = self['list']
+		l.fillEPG(self.services)
+		self.moveTimeLines(True)
+		l.setCurrentIndex(0)
 		self.setTitle(self['bouquetlist'].getCurrentBouquet())
 
 	def nextBouquet(self):
