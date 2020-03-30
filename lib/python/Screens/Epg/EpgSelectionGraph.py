@@ -80,7 +80,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 				'prevService': (self.back24Hours, _('Jump back 24 hours')),
 				'nextBouquet': (self.nextBouquet, _('Go to next bouquet')),
 				'prevBouquet': (self.prevBouquet, _('Go to previous bouquet')),
-				'input_date_time': (self.enterDateTime, _('Go to specific data/time')),
+				'input_date_time': (self.enterDateTime, _('Go to specific date/time')),
 				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
 				'info': (self.Info, _('Show detailed event info')),
 				'infolong': (self.InfoLong, _('Show single epg for current channel')),

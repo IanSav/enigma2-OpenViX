@@ -3,7 +3,7 @@ from enigma import eServiceReference, eTimer, eServiceCenter, ePoint
 
 from Screens.Screen import Screen
 from Screens.HelpMenu import HelpableScreen
-from Components.ActionMap import HelpableActionMap, HelpableNumberActionMap
+from Components.ActionMap import ActionMap, HelpableActionMap, HelpableNumberActionMap
 from Components.Button import Button
 from Components.config import config, configfile, ConfigClock, ConfigDateTime
 from Components.Epg.EpgListBase import EPG_TYPE_SINGLE, EPG_TYPE_SIMILAR, EPG_TYPE_MULTI, EPG_TYPE_ENHANCED, EPG_TYPE_INFOBAR, EPG_TYPE_GRAPH, EPG_TYPE_INFOBARGRAPH
@@ -202,15 +202,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		from Screens.Epg.EpgSelectionSimilar import EPGSelectionSimilar
 		self.session.open(EPGSelectionSimilar, refstr, eventid)
 
-	# possibly unused
-	def setServices(self, services):
-		self.services = services
-		self.onCreate()
-
-	def setService(self, service):
-		self.currentService = service
-		self.onCreate()
-
 	def enterDateTime(self):
 		if not EPGSelectionBase.lastEnteredTime:
 			# the stored date and time is shared by all EPG types
@@ -322,7 +313,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			autotimer = None
 
 	def timerAdd(self):
-		self.RecordTimerQuestion(True)
+		self.recordTimerQuestion(True)
 
 	def editTimer(self, timer):
 		self.session.open(TimerEntry, timer)
@@ -343,7 +334,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.key_green_choice = self.ADD_TIMER
 		self.refreshList()
 
-	def RecordTimerQuestion(self, manual=False):
+	def recordTimerQuestion(self, manual=False):
 		cur = self['list'].getCurrent()
 		event = cur[0]
 		serviceref = cur[1]
@@ -378,7 +369,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		from Screens.InfoBar import InfoBar
 		InfoBarInstance = InfoBar.instance
 		if not InfoBarInstance.LongButtonPressed:
-			self.RecordTimerQuestion()
+			self.recordTimerQuestion()
 
 	def recButtonPressedLong(self):
 		from Screens.InfoBar import InfoBar
@@ -758,20 +749,20 @@ class EPGBouquetSelection:
 		self['bouquetlist'].hide()
 		self.bouquetlist_active = False
 
-		self['bouquetokactions'] = HelpableActionMap(self, 'OkCancelActions',
+		self['bouquetokactions'] = ActionMap(['OkCancelActions'],
 			{
-				'cancel': (self.bouquetListHide, _('Close bouquet list.')),
-				'OK': (self.bouquetListOK, _('Change to bouquet')),
+				'cancel': self.bouquetListHide,
+				'OK': self.bouquetListOK,
 			}, -1)
 		self['bouquetokactions'].csel = self
 		self["bouquetokactions"].setEnabled(False)
 
-		self['bouquetcursoractions'] = HelpableActionMap(self, 'DirectionActions',
+		self['bouquetcursoractions'] = ActionMap(['DirectionActions'],
 			{
-				'left': (self.moveBouquetPageUp, _('Go to previous event')),
-				'right': (self.moveBouquetPageDown, _('Go to next event')),
-				'up': (self.moveBouquetUp, _('Go to previous channel')),
-				'down': (self.moveBouquetDown, _('Go to next channel'))
+				'left': self.moveBouquetPageUp,
+				'right': self.moveBouquetPageDown,
+				'up': self.moveBouquetUp,
+				'down': self.moveBouquetDown
 			}, -1)
 		self['bouquetcursoractions'].csel = self
 		self["bouquetcursoractions"].setEnabled(False)
