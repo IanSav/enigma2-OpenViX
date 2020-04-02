@@ -23,6 +23,13 @@ from Screens.TimerEntry import TimerEntry, InstantRecordTimerEntry
 from RecordTimer import RecordTimerEntry, parseEvent, AFTEREVENT
 from ServiceReference import ServiceReference
 
+def ignoreLongKeyPress(action):
+	def fn():
+		from Screens.InfoBar import InfoBar
+		if not InfoBar.instance.LongButtonPressed:
+			action()
+	return fn
+
 # PiPServiceRelation installed?
 try:
 	from Plugins.SystemPlugins.PiPServiceRelation.plugin import getRelationDict
@@ -64,7 +71,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self['Event'] = Event()
 		self['lab1'] = Label(_('Please wait while gathering EPG data...'))
 		self['lab1'].hide()
-		self.key_green_choice = self.EMPTY
 		self['key_red'] = Button(_('IMDb Search'))
 		self['key_green'] = Button(_('Add Timer'))
 		self['key_yellow'] = Button(_('EPG Search'))
@@ -79,25 +85,25 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self['okactions'] = HelpableActionMap(self, 'OkCancelActions',
 			{
 				'cancel': (self.closeScreen, _('Exit EPG')),
-				'OK': (self.OK, _('Zap to channel (setup in menu)')),
+				'OK': (ignoreLongKeyPress(self.OK), _('Zap to channel (setup in menu)')),
 				'OKLong': (self.OKLong, _('Zap to channel and close (setup in menu)'))
 			}, -1)
 		self['okactions'].csel = self
 		self['colouractions'] = HelpableActionMap(self, 'ColorActions',
 			{
-				'red': (self.redButtonPressed, _('IMDB search for current event')),
-				'redlong': (self.redButtonPressedLong, _('Sort EPG list')),
-				'green': (self.greenButtonPressed, _('Add/Remove timer for current event')),
-				'greenlong': (self.greenButtonPressedLong, _('Show timer list')),
-				'yellow': (self.yellowButtonPressed, _('Search for similar events')),
-				'blue': (self.blueButtonPressed, _('Add an autotimer for current event')),
-				'bluelong': (self.blueButtonPressedLong, _('Show autotimer list'))
+				'red': (ignoreLongKeyPress(self.openIMDb), _('IMDB search for current event')),
+				'redlong': (self.sortEPG, _('Sort EPG list')),
+				'green': (ignoreLongKeyPress(self.addEditTimer), _('Add/Remove timer for current event')),
+				'greenlong': (self.openTimerList, _('Show timer list')),
+				'yellow': (ignoreLongKeyPress(self.openEPGSearch), _('Search for similar events')),
+				'blue': (ignoreLongKeyPress(self.addAutoTimer), _('Add an autotimer for current event')),
+				'bluelong': (self.openAutoTimerList, _('Show autotimer list'))
 			}, -1)
 		self['colouractions'].csel = self
 		self['recordingactions'] = HelpableActionMap(self, 'InfobarInstantRecord',
 			{
-				'ShortRecord': (self.recButtonPressed, _('Add a record timer for current event')),
-				'LongRecord': (self.recButtonPressedLong, _('Add a zap timer for current event'))
+				'ShortRecord': (self.recordTimerQuestion, _('Add a record timer for current event')),
+				'LongRecord': (self.doZapTimer, _('Add a zap timer for current event'))
 			}, -1)
 		self['recordingactions'].csel = self
 
@@ -142,65 +148,22 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		else:
 			return self.servicelist.getRoot()
 
-	def infoKeyPressed(self):
+	def openEventView(self):
+		def openSimilarList(eventid, refstr):
+			from Screens.Epg.EpgSelectionSimilar import EPGSelectionSimilar
+			self.session.open(EPGSelectionSimilar, refstr, eventid)
 		cur = self['list'].getCurrent()
 		event = cur[0]
 		service = cur[1]
 		if event is not None:
-			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=self.openSimilarList)
+			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=openSimilarList)
 
-	def redButtonPressed(self):
+	def sortEPG(self):
 		self.closeEventViewDialog()
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			self.openIMDb()
 
-	def redButtonPressedLong(self):
+	def addEditTimer(self):
 		self.closeEventViewDialog()
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if InfoBarInstance.LongButtonPressed:
-			self.sortEpg()
-
-	def greenButtonPressed(self):
-		self.closeEventViewDialog()
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			self.RecordTimerQuestion(True)
-
-	def greenButtonPressedLong(self):
-		self.closeEventViewDialog()
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if InfoBarInstance.LongButtonPressed:
-			self.showTimerList()
-
-	def yellowButtonPressed(self):
-		self.closeEventViewDialog()
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			self.openEPGSearch()
-
-	def blueButtonPressed(self):
-		self.closeEventViewDialog()
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			self.addAutoTimer()
-
-	def blueButtonPressedLong(self):
-		self.closeEventViewDialog()
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if InfoBarInstance.LongButtonPressed:
-			self.showAutoTimerList()
-
-	def openSimilarList(self, eventid, refstr):
-		from Screens.Epg.EpgSelectionSimilar import EPGSelectionSimilar
-		self.session.open(EPGSelectionSimilar, refstr, eventid)
+		self.recordTimerQuestion(True)
 
 	def enterDateTime(self):
 		if not EPGSelectionBase.lastEnteredTime:
@@ -219,6 +182,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 				self.session.open(EPGSelectionSingle, serviceref, event.getBeginTime())
 
 	def openIMDb(self):
+		self.closeEventViewDialog()
 		try:
 			from Plugins.Extensions.IMDb.plugin import IMDB, IMDBEPGSelection
 			try:
@@ -233,6 +197,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			self.session.open(MessageBox, _('The IMDb plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
 
 	def openEPGSearch(self):
+		self.closeEventViewDialog()
 		try:
 			from Plugins.Extensions.EPGSearch.EPGSearch import EPGSearch
 			try:
@@ -246,6 +211,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			self.session.open(MessageBox, _('The EPGSearch plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
 
 	def addAutoTimer(self):
+		self.closeEventViewDialog()
 		try:
 			from Plugins.Extensions.AutoTimer.AutoTimerEditor import addAutotimerFromEvent
 			cur = self['list'].getCurrent()
@@ -271,11 +237,13 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		except ImportError:
 			self.session.open(MessageBox, _('The AutoTimer plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
 
-	def showTimerList(self):
+	def openTimerList(self):
+		self.closeEventViewDialog()
 		from Screens.TimerEdit import TimerEditList
 		self.session.open(TimerEditList)
 
-	def showAutoTimerList(self):
+	def openAutoTimerList(self):
+		self.closeEventViewDialog()
 		global autopoller
 		global autotimer
 		try:
@@ -322,16 +290,14 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.closeChoiceBoxDialog()
 		timer.afterEvent = AFTEREVENT.NONE
 		self.session.nav.RecordTimer.removeEntry(timer)
-		self['key_green'].setText(_('Add Timer'))
-		self.key_green_choice = self.ADD_TIMER
+		self["key_green"].setText(_('Add Timer'))
 		self.refreshList()
 
 	def disableTimer(self, timer):
 		self.closeChoiceBoxDialog()
 		timer.disable()
 		self.session.nav.RecordTimer.timeChanged(timer)
-		self['key_green'].setText(_('Add Timer'))
-		self.key_green_choice = self.ADD_TIMER
+		self["key_green"].setText(_('Add Timer'))
 		self.refreshList()
 
 	def recordTimerQuestion(self, manual=False):
@@ -364,18 +330,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			posy = self['list'].getSelectionPosition(serviceref)
 			self.ChoiceBoxDialog.instance.move(ePoint(posy[0]-self.ChoiceBoxDialog.instance.size().width(),self.instance.position().y()+posy[1]))
 			self.showChoiceBoxDialog()
-
-	def recButtonPressed(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			self.recordTimerQuestion()
-
-	def recButtonPressedLong(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if InfoBarInstance.LongButtonPressed:
-			self.doZapTimer()
 
 	def RemoveChoiceBoxCB(self, choice):
 		self.closeChoiceBoxDialog()
@@ -461,47 +415,24 @@ class EPGSelectionBase(Screen, HelpableScreen):
 					if simulTimerList is not None:
 						self.session.openWithCallback(self.finishSanityCorrection, TimerSanityConflict, simulTimerList)
 			self["key_green"].setText(_("Change Timer"))
-			self.key_green_choice = self.REMOVE_TIMER
 		else:
-			self['key_green'].setText(_('Add Timer'))
-			self.key_green_choice = self.ADD_TIMER
+			self["key_green"].setText(_("Add Timer"))
 		self.refreshList()
 
 	def finishSanityCorrection(self, answer):
 		self.finishedAdd(answer)
 
 	def OK(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			if config.epgselection.graph_ok.value == 'Zap' or config.epgselection.enhanced_ok.value == 'Zap' or config.epgselection.infobar_ok.value == 'Zap' or config.epgselection.multi_ok.value == 'Zap':
-				self.zapTo()
-			if config.epgselection.graph_ok.value == 'Zap + Exit' or config.epgselection.enhanced_ok.value == 'Zap + Exit' or config.epgselection.infobar_ok.value == 'Zap + Exit' or config.epgselection.multi_ok.value == 'Zap + Exit':
-				self.zap()
+		if config.epgselection.graph_ok.value == 'Zap' or config.epgselection.enhanced_ok.value == 'Zap' or config.epgselection.infobar_ok.value == 'Zap' or config.epgselection.multi_ok.value == 'Zap':
+			self.zapTo()
+		if config.epgselection.graph_ok.value == 'Zap + Exit' or config.epgselection.enhanced_ok.value == 'Zap + Exit' or config.epgselection.infobar_ok.value == 'Zap + Exit' or config.epgselection.multi_ok.value == 'Zap + Exit':
+			self.zap()
 
 	def OKLong(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if InfoBarInstance.LongButtonPressed:
-			if config.epgselection.graph_oklong.value == 'Zap' or config.epgselection.enhanced_oklong.value == 'Zap' or config.epgselection.infobar_oklong.value == 'Zap' or config.epgselection.multi_oklong.value == 'Zap':
-				self.zapTo()
-			if config.epgselection.graph_oklong.value == 'Zap + Exit' or config.epgselection.enhanced_oklong.value == 'Zap + Exit' or config.epgselection.infobar_oklong.value == 'Zap + Exit' or config.epgselection.multi_oklong.value == 'Zap + Exit':
-				self.zap()
-
-	def epgButtonPressed(self):
-		self.openSingleEPG()
-
-	def Info(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			self.infoKeyPressed()
-
-	def InfoLong(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if InfoBarInstance.LongButtonPressed:
-			self.openSingleEPG()
+		if config.epgselection.graph_oklong.value == 'Zap' or config.epgselection.enhanced_oklong.value == 'Zap' or config.epgselection.infobar_oklong.value == 'Zap' or config.epgselection.multi_oklong.value == 'Zap':
+			self.zapTo()
+		if config.epgselection.graph_oklong.value == 'Zap + Exit' or config.epgselection.enhanced_oklong.value == 'Zap + Exit' or config.epgselection.infobar_oklong.value == 'Zap + Exit' or config.epgselection.multi_oklong.value == 'Zap + Exit':
+			self.zap()
 
 	def onSelectionChanged(self):
 		cur = self['list'].getCurrent()
@@ -512,14 +443,10 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		else:
 			self['Service'].newService(cur[1].ref)
 		if cur[1] is None or cur[1].getServiceName() == '':
-			if self.key_green_choice != self.EMPTY:
-				self['key_green'].setText('')
-				self.key_green_choice = self.EMPTY
+			self['key_green'].setText('')
 			return
 		if event is None:
-			if self.key_green_choice != self.EMPTY:
-				self['key_green'].setText('')
-				self.key_green_choice = self.EMPTY
+			self['key_green'].setText('')
 			return
 		serviceref = cur[1]
 		eventid = event.getEventId()
@@ -529,12 +456,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			if timer.eit == eventid and ':'.join(timer.service_ref.ref.toString().split(':')[:11]) == refstr:
 				isRecordEvent = True
 				break
-		if isRecordEvent and self.key_green_choice != self.REMOVE_TIMER:
-			self["key_green"].setText(_("Change Timer"))
-			self.key_green_choice = self.REMOVE_TIMER
-		elif not isRecordEvent and self.key_green_choice != self.ADD_TIMER:
-			self['key_green'].setText(_('Add Timer'))
-			self.key_green_choice = self.ADD_TIMER
+		self["key_green"].setText(_("Change Timer") if isRecordEvent else _('Add Timer'))
 
 	def setServicelistSelection(self, bouquet, service):
 		if self.servicelist:

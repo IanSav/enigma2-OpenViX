@@ -50,9 +50,9 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 				'nextBouquet': (self.nextBouquet, _('Go to next bouquet')),
 				'prevBouquet': (self.prevBouquet, _('Go to previous bouquet')),
 				'input_date_time': (self.enterDateTime, _('Go to specific data/time')),
-				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
-				'info': (self.Info, _('Show detailed event info')),
-				'infolong': (self.InfoLong, _('Show single epg for current channel')),
+				'epg': (self.openSingleEPG, _('Show single epg for current channel')),
+				'info': (self.openEventView, _('Show detailed event info')),
+				'infolong': (self.openSingleEPG, _('Show single epg for current channel')),
 				'tv': (self.bouquetList, _('Toggle between bouquet/epg lists')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)

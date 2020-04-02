@@ -81,9 +81,9 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 				'nextBouquet': (self.nextBouquet, _('Go to next bouquet')),
 				'prevBouquet': (self.prevBouquet, _('Go to previous bouquet')),
 				'input_date_time': (self.enterDateTime, _('Go to specific date/time')),
-				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
-				'info': (self.Info, _('Show detailed event info')),
-				'infolong': (self.InfoLong, _('Show single epg for current channel')),
+				'epg': (self.openSingleEPG, _('Show single epg for current channel')),
+				'info': (self.infoPressed, _('Show detailed event info')),
+				'infolong': (self.infoLongPressed, _('Show single epg for current channel')),
 				'tv': (self.bouquetList, _('Toggle between bouquet/epg lists')),
 				'tvlong': (self.togglePIG, _('Toggle picture In graphics')),
 				'menu': (self.createSetup, _('Setup menu'))
@@ -171,27 +171,17 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 	def rightPressed(self):
 		self.updEvent(+1)
 
-	def Info(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if not InfoBarInstance.LongButtonPressed:
-			if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_info.value == 'Channel Info':
-				self.infoKeyPressed()
-			elif self.type == EPG_TYPE_GRAPH and config.epgselection.graph_info.value == 'Single EPG':
-				self.openSingleEPG()
-			else:
-				self.infoKeyPressed()
+	def infoPressed(self):
+		if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_info.value == 'Single EPG':
+			self.openSingleEPG()
+		else:
+			self.openEventView()
 
-	def InfoLong(self):
-		from Screens.InfoBar import InfoBar
-		InfoBarInstance = InfoBar.instance
-		if InfoBarInstance.LongButtonPressed:
-			if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_infolong.value == 'Channel Info':
-				self.infoKeyPressed()
-			elif self.type == EPG_TYPE_GRAPH and config.epgselection.graph_infolong.value == 'Single EPG':
-				self.openSingleEPG()
-			else:
-				self.openSingleEPG()
+	def infoLongPressed(self):
+		if self.type == EPG_TYPE_GRAPH and config.epgselection.graph_infolong.value == 'Channel Info':
+			self.openEventView()
+		else:
+			self.openSingleEPG()
 
 	def bouquetChanged(self):
 		self.BouquetRoot = False
@@ -220,9 +210,9 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		if len(ret) > 1 and ret[0]:
 			self.goToTime(ret[1])
 
-	def infoKeyPressed(self):
+	def openEventView(self):
 		if self.type == EPG_TYPE_GRAPH:
-			EPGSelectionBase.infoKeyPressed(self)
+			EPGSelectionBase.openEventView(self)
 		else: # EPG_TYPE_INFOBARGRAPH
 			if self.eventviewDialog:
 				self.eventviewDialog.hide()

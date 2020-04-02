@@ -15,8 +15,8 @@ class EPGSelectionSingle(EPGSelectionBase):
 		self.currentService = ServiceReference(service)
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
 			{
-				'info': (self.Info, _('Show detailed event info')),
-				'epg': (self.Info, _('Show detailed event info')),
+				'info': (self.openEventView, _('Show detailed event info')),
+				'epg': (self.openEventView, _('Show detailed event info')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
 		self['epgactions'].csel = self
@@ -71,7 +71,7 @@ class EPGSelectionSingle(EPGSelectionBase):
 		setService(cur[1])
 		setEvent(cur[0])
 
-	def sortEpg(self):
+	def sortEPG(self):
 		if config.epgselection.sort.value == '0':
 			config.epgselection.sort.setValue('1')
 		else:

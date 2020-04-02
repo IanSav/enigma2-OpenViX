@@ -27,8 +27,8 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 				'prevBouquet': (self.prevBouquet, _('Go to previous bouquet')),
 				'nextService': (self.nextService, _('Go to next channel')),
 				'prevService': (self.prevService, _('Go to previous channel')),
-				'info': (self.Info, _('Show detailed event info')),
-				'infolong': (self.InfoLong, _('Show single epg for current channel')),
+				'info': (self.openEventView, _('Show detailed event info')),
+				'infolong': (self.openSingleEPG, _('Show single epg for current channel')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
 		self['epgactions'].csel = self
@@ -144,7 +144,7 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 		setService(cur[1])
 		setEvent(cur[0])
 
-	def sortEpg(self):
+	def sortEPG(self):
 		if config.epgselection.sort.value == '0':
 			config.epgselection.sort.setValue('1')
 		else:

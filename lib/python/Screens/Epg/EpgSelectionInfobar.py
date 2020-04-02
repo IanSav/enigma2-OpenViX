@@ -21,9 +21,9 @@ class EPGSelectionInfobar(EPGSelectionBase):
 				'prevBouquet': (self.prevBouquet, _('Go to previous bouquet')),
 				'nextService': (self.nextPage, _('Move down a page')),
 				'prevService': (self.prevPage, _('Move up a page')),
-				'epg': (self.epgButtonPressed, _('Show single epg for current channel')),
-				'info': (self.Info, _('Show detailed event info')),
-				'infolong': (self.InfoLong, _('Show single epg for current channel')),
+				'epg': (self.openSingleEPG, _('Show single epg for current channel')),
+				'info': (self.openEventView, _('Show detailed event info')),
+				'infolong': (self.openSingleEPG, _('Show single epg for current channel')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
 		self['epgactions'].csel = self
@@ -150,7 +150,7 @@ class EPGSelectionInfobar(EPGSelectionBase):
 		setService(cur[1])
 		setEvent(cur[0])
 
-	def sortEpg(self):
+	def sortEPG(self):
 		if config.epgselection.sort.value == '0':
 			config.epgselection.sort.setValue('1')
 		else:
