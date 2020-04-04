@@ -4,15 +4,16 @@ from Components.ActionMap import HelpableActionMap
 from Components.config import config, configfile
 from Components.Epg.EpgListSingle import EPGListSingle
 from Components.Epg.EpgListBase import EPG_TYPE_INFOBAR
-from EpgSelectionBase import EPGSelectionBase
+from EpgSelectionBase import EPGSelectionBase, EPGServiceZap
 from Components.Sources.Event import Event
 from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
-class EPGSelectionInfobar(EPGSelectionBase):
+class EPGSelectionInfobar(EPGSelectionBase, EPGServiceZap):
 	def __init__(self, session, servicelist, zapFunc):
 		print "[EPGSelectionInfobar] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_INFOBAR, session, zapFunc)
+		EPGServiceZap.__init__(self, config.epgselection.infobar_preview_mode, config.epgselection.infobar_ok, config.epgselection.infobar_oklong)
 
 		self.skinName = 'QuickEPG'
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',

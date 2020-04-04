@@ -9,15 +9,16 @@ from Components.Button import Button
 from Components.config import config, configfile, ConfigClock
 from Components.Epg.EpgListSingle import EPGListSingle
 from Components.Epg.EpgListBase import EPG_TYPE_ENHANCED
-from EpgSelectionBase import EPGSelectionBase, EPGServiceNumberSelection
+from EpgSelectionBase import EPGSelectionBase, EPGServiceNumberSelection, EPGServiceZap
 from Screens.Setup import Setup
 from ServiceReference import ServiceReference
 
-class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
+class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection, EPGServiceZap):
 	def __init__(self, session, servicelist, zapFunc, startBouquet, startRef, bouquets):
 		print "[EPGSelectionEnhanced] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_ENHANCED, session, zapFunc, None, None, startBouquet, startRef, bouquets)
 		EPGServiceNumberSelection.__init__(self)
+		EPGServiceZap.__init__(self, config.epgselection.enhanced_preview_mode, config.epgselection.enhanced_ok, config.epgselection.enhanced_oklong)
 
 		self.skinName = 'EPGSelection'
 
@@ -43,7 +44,6 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection):
 			
 		self.list = []
 		self.servicelist = servicelist
-		self.currentService = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 
 		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
 			itemsPerPageConfig = config.epgselection.enhanced_itemsperpage,

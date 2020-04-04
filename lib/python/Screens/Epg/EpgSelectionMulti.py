@@ -5,7 +5,7 @@ from Components.ActionMap import HelpableActionMap
 from Components.config import config
 from Components.Epg.EpgListMulti import EPGListMulti
 from Components.Epg.EpgListBase import EPG_TYPE_MULTI
-from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
+from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection, EPGServiceZap
 from Components.Label import Label
 from Components.Pixmap import Pixmap
 from Screens.Setup import Setup
@@ -14,11 +14,12 @@ from Screens.Setup import Setup
 # Use this to remind us what is going on...
 SECS_IN_MIN = 60
 
-class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
+class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 	def __init__(self, session, zapFunc, startBouquet, startRef, bouquets):
 		print "[EPGSelectionMulti] ------- NEW VERSION -------"
 		EPGSelectionBase.__init__(self, EPG_TYPE_MULTI, session, zapFunc, None, None, startBouquet, startRef, bouquets)
 		EPGBouquetSelection.__init__(self, False)
+		EPGServiceZap.__init__(self, config.epgselection.multi_preview_mode, config.epgselection.multi_ok, config.epgselection.multi_oklong)
 
 		self.skinName = 'EPGSelectionMulti'
 		self.ask_time = -1
@@ -79,15 +80,13 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection):
 
 	def loadEPGData(self):
 		self._populateBouquetList()
-		serviceref = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 		self['list'].fillEPG(self.services, self.ask_time)
-		self['list'].moveToService(serviceref)
-		self['list'].setCurrentlyPlaying(serviceref)
+		self['list'].moveToService(self.startRef)
 		self['lab1'].hide()
 
 	def refreshList(self):
 		self.refreshTimer.stop()
-		self['list'].fillEPG(self.services, self.ask_time)
+		self['list'].updateEPG(0)
 
 	def leftPressed(self):
 		self['list'].updateEPG(-1)

@@ -9,10 +9,9 @@ from ServiceReference import ServiceReference
 class EPGSelectionSingle(EPGSelectionBase):
 	def __init__(self, session, service, time_focus = None):
 		print "[EPGSelectionSingle] ------- NEW VERSION -------"
-		EPGSelectionBase.__init__(self, EPG_TYPE_SINGLE, session)
+		EPGSelectionBase.__init__(self, EPG_TYPE_SINGLE, session, startRef = service)
 
 		self.skinName = 'EPGSelection'
-		self.currentService = ServiceReference(service)
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
 			{
 				'info': (self.openEventView, _('Show detailed event info')),
@@ -29,7 +28,7 @@ class EPGSelectionSingle(EPGSelectionBase):
 			}, -1)
 		self['epgcursoractions'].csel = self
 
-		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
+		self['list'] = EPGListSingle(selChangedCB = self.onSelectionChanged, timer = session.nav.RecordTimer,
 			itemsPerPageConfig = config.epgselection.enhanced_itemsperpage,
 			eventfsConfig = config.epgselection.enhanced_eventfs,
 			time_focus = time_focus)
@@ -46,7 +45,7 @@ class EPGSelectionSingle(EPGSelectionBase):
 
 	def onCreate(self):
 		self['list'].recalcEntrySize()
-		service = self.currentService
+		service = ServiceReference(self.startRef)
 		self['Service'].newService(service.ref)
 		title = service.getServiceName()
 		self.setTitle(title)
@@ -56,9 +55,8 @@ class EPGSelectionSingle(EPGSelectionBase):
 
 	def refreshList(self):
 		self.refreshTimer.stop()
-		service = self.currentService
 		index = self['list'].getCurrentIndex()
-		self['list'].fillEPG(service)
+		self['list'].fillEPG(ServiceReference(self.startRef))
 		self['list'].sortEPG(int(config.epgselection.sort.value))
 		self['list'].setCurrentIndex(index)
 
@@ -71,6 +69,12 @@ class EPGSelectionSingle(EPGSelectionBase):
 		setService(cur[1])
 		setEvent(cur[0])
 
+	def OK(self):
+		self.closeScreen()
+
+	def OKLong(self):
+		self.closeScreen()
+
 	def sortEPG(self):
 		if config.epgselection.sort.value == '0':
 			config.epgselection.sort.setValue('1')
@@ -81,4 +85,5 @@ class EPGSelectionSingle(EPGSelectionBase):
 		self['list'].sortEPG(int(config.epgselection.sort.value))
 
 	def closeScreen(self):
+		self.closeEventViewDialog()
 		self.close()

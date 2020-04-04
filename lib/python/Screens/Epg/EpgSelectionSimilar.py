@@ -12,11 +12,6 @@ class EPGSelectionSimilar(EPGSelectionBase):
 		self.skinName = 'EPGSelection'
 		self.currentService = service
 		self.eventid = eventid
-		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
-			{
-				'infolong': (self.InfoLong, _('Show single epg for current channel'))
-			}, -1)
-		self['epgactions'].csel = self
 
 		self['list'] = EPGListSingle(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer,
 			itemsPerPageConfig = config.epgselection.enhanced_itemsperpage,
@@ -29,3 +24,13 @@ class EPGSelectionSimilar(EPGSelectionBase):
 
 	def refreshList(self):
 		self.refreshTimer.stop()
+
+	def OK(self):
+		self.closeScreen()
+
+	def OKLong(self):
+		self.closeScreen()
+
+	def closeScreen(self):
+		self.closeEventViewDialog()
+		self.close()

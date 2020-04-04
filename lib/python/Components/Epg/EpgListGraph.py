@@ -26,11 +26,12 @@ class EPGListGraph(EPGListBase):
 	def __config(self, name):
 		return config.epgselection.dict()[('graph' if self.type == EPG_TYPE_GRAPH else 'infobar') + '_' + name]
 
-	def __init__(self, type, selChangedCB = None, timer = None, graphic=True):
+	def __init__(self, type, session, selChangedCB = None, timer = None, graphic=True):
 		print "[EPGListGraph] Init"
 		EPGListBase.__init__(self, selChangedCB, timer)
 
 		self.type = type
+		self.session = session
 		self.time_focus = time() # default to now
 		self.selectedEventIndex = None
 		self.selectedService = None
@@ -382,7 +383,7 @@ class EPGListGraph(EPGListBase):
 		serviceForeColor = self.foreColorService
 		serviceBackColor = self.backColorService
 		bgpng = self.othServPix
-		if CompareWithAlternatives(service, self.currentlyPlaying):
+		if CompareWithAlternatives(service, self.session.nav.getCurrentlyPlayingServiceOrGroup()):
 			serviceForeColor = self.foreColorServiceNow
 			serviceBackColor = self.backColorServiceNow
 			bgpng = self.nowServPix

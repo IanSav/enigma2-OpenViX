@@ -6,7 +6,6 @@ from Screens.HelpMenu import HelpableScreen
 from Components.ActionMap import ActionMap, HelpableActionMap, HelpableNumberActionMap
 from Components.Button import Button
 from Components.config import config, configfile, ConfigClock, ConfigDateTime
-from Components.Epg.EpgListBase import EPG_TYPE_SINGLE, EPG_TYPE_SIMILAR, EPG_TYPE_MULTI, EPG_TYPE_ENHANCED, EPG_TYPE_INFOBAR, EPG_TYPE_GRAPH, EPG_TYPE_INFOBARGRAPH
 from Components.Epg.EpgBouquetList import EPGBouquetList
 from Components.Label import Label
 from Components.Sources.ServiceEvent import ServiceEvent
@@ -54,6 +53,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.zapFunc = zapFunc
 		self.serviceChangeCB = serviceChangeCB
 		self.bouquets = bouquets
+		self.originalPlayingServiceOrGroup = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 		self.startBouquet = startBouquet
 		self.startRef = startRef
 		self.servicelist = None
@@ -61,7 +61,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.closeRecursive = False
 		self.eventviewDialog = None
 		self.eventviewWasShown = False
-		self.currch = None
 		self.session.pipshown = False
 		self.pipServiceRelation = getRelationDict() if plugin_PiPServiceRelation_installed else {}
 		self.BouquetRoot = False
@@ -422,18 +421,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 	def finishSanityCorrection(self, answer):
 		self.finishedAdd(answer)
 
-	def OK(self):
-		if config.epgselection.graph_ok.value == 'Zap' or config.epgselection.enhanced_ok.value == 'Zap' or config.epgselection.infobar_ok.value == 'Zap' or config.epgselection.multi_ok.value == 'Zap':
-			self.zapTo()
-		if config.epgselection.graph_ok.value == 'Zap + Exit' or config.epgselection.enhanced_ok.value == 'Zap + Exit' or config.epgselection.infobar_ok.value == 'Zap + Exit' or config.epgselection.multi_ok.value == 'Zap + Exit':
-			self.zap()
-
-	def OKLong(self):
-		if config.epgselection.graph_oklong.value == 'Zap' or config.epgselection.enhanced_oklong.value == 'Zap' or config.epgselection.infobar_oklong.value == 'Zap' or config.epgselection.multi_oklong.value == 'Zap':
-			self.zapTo()
-		if config.epgselection.graph_oklong.value == 'Zap + Exit' or config.epgselection.enhanced_oklong.value == 'Zap + Exit' or config.epgselection.infobar_oklong.value == 'Zap + Exit' or config.epgselection.multi_oklong.value == 'Zap + Exit':
-			self.zap()
-
 	def onSelectionChanged(self):
 		cur = self['list'].getCurrent()
 		event = cur[0]
@@ -472,33 +459,57 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			del self.eventviewDialog
 			self.eventviewDialog = None
 
+class EPGServiceZap:
+	def __init__(self, configPreviewMode, configOK, configOKLong):
+		self.prevch = None
+		self.currch = None
+		self.configPreviewMode = configPreviewMode
+		self.configOK = configOK
+		self.configOKLong = configOKLong
+
+	def OK(self):
+		if self.configOK.value == 'Zap':
+			self.zapTo()
+		else:
+			self.zap()
+
+	def OKLong(self):
+		if config.configOKLong.value == 'Zap':
+			self.zapTo()
+		else:
+			self.zap()		
+
+	def zap(self):
+		self.zapSelectedService()
+		self.closeEventViewDialog()
+		self.close('close')
+
+	def zapTo(self):
+		if self.session.nav.getCurrentlyPlayingServiceOrGroup() and '0:0:0:0:0:0:0:0:0' in self.session.nav.getCurrentlyPlayingServiceOrGroup().toString():
+			from Screens.InfoBarGenerics import setResumePoint
+			setResumePoint(self.session)
+		self.zapSelectedService(True)
+		self.refreshTimer.start(1)
+		if not self.currch or self.currch == self.prevch:
+			self.zapFunc(None, False)
+			self.closeEventViewDialog()
+			self.close('close')
+
 	def closeScreen(self):
-		if self.session.nav.getCurrentlyPlayingServiceOrGroup() and self.startRef and self.session.nav.getCurrentlyPlayingServiceOrGroup().toString() != self.startRef.toString():
-			if self.zapFunc and self.startRef and self.startBouquet:
-				if ((self.type == EPG_TYPE_GRAPH and config.epgselection.graph_preview_mode.value) or
-					(self.type == EPG_TYPE_MULTI and config.epgselection.multi_preview_mode.value) or
-					(self.type in (EPG_TYPE_INFOBAR, EPG_TYPE_INFOBARGRAPH) and config.epgselection.infobar_preview_mode.value in ('1', '2')) or
-					(self.type == EPG_TYPE_ENHANCED and config.epgselection.enhanced_preview_mode.value)):
-					if '0:0:0:0:0:0:0:0:0' not in self.startRef.toString():
-						self.zapFunc(None, zapback = True)
-				elif '0:0:0:0:0:0:0:0:0' in self.startRef.toString():
-					self.session.nav.playService(self.startRef)
-				else:
-					self.zapFunc(None, False)
+		# when exiting, restore the previous service/playback if a channel has been previewed
+		if self.originalPlayingServiceOrGroup and self.session.nav.getCurrentlyPlayingServiceOrGroup() and self.session.nav.getCurrentlyPlayingServiceOrGroup().toString() != self.originalPlayingServiceOrGroup.toString():
+			if self.configPreviewMode.value:
+				if '0:0:0:0:0:0:0:0:0' not in self.originalPlayingServiceOrGroup.toString():
+					self.zapFunc(None, zapback = True)
+			elif '0:0:0:0:0:0:0:0:0' in self.originalPlayingServiceOrGroup.toString():
+				self.session.nav.playService(self.originalPlayingServiceOrGroup)
+			else:
+				self.zapFunc(None, False)
 		if self.session.pipshown:
 			self.session.pipshown = False
 			del self.session.pip
 		self.closeEventViewDialog()
 		self.close(True)
-
-	def zap(self):
-		if self.zapFunc:
-			self.zapSelectedService()
-			self.closeEventViewDialog()
-			self.close(True)
-		else:
-			self.closeEventViewDialog()
-			self.close()
 
 	def zapSelectedService(self, prev=False):
 		currservice = self.session.nav.getCurrentlyPlayingServiceReference() and str(self.session.nav.getCurrentlyPlayingServiceReference().toString()) or None
@@ -506,55 +517,36 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			self.prevch = self.session.pip.getCurrentService() and str(self.session.pip.getCurrentService().toString()) or None
 		else:
 			self.prevch = self.session.nav.getCurrentlyPlayingServiceReference() and str(self.session.nav.getCurrentlyPlayingServiceReference().toString()) or None
-		lst = self["list"]
-		if type != EPG_TYPE_MULTI or lst.getCurrentChangeCount() == 0:
-			ref = lst.getCurrent()[1]
-			if ref is not None:
-				if (self.type == EPG_TYPE_INFOBAR or self.type == EPG_TYPE_INFOBARGRAPH) and config.epgselection.infobar_preview_mode.value == '2':
-					if not prev:
-						if self.session.pipshown:
-							self.session.pipshown = False
-							del self.session.pip
-						self.zapFunc(ref.ref, bouquet = self.getCurrentBouquet(), preview = False)
-						return
-					if not self.session.pipshown:
-						self.session.pip = self.session.instantiateDialog(PictureInPicture)
-						self.session.pip.show()
-						self.session.pipshown = True
-					n_service = self.pipServiceRelation.get(str(ref.ref), None)
-					if n_service is not None:
-						service = eServiceReference(n_service)
-					else:
-						service = ref.ref
-					if self.currch == service.toString():
-						if self.session.pipshown:
-							self.session.pipshown = False
-							del self.session.pip
-						self.zapFunc(ref.ref, bouquet = self.getCurrentBouquet(), preview = False)
-						return
-					if self.prevch != service.toString() and currservice != service.toString():
-						self.session.pip.playService(service)
-						self.currch = self.session.pip.getCurrentService() and str(self.session.pip.getCurrentService().toString())
+		ref = self["list"].getCurrent()[1]
+		if ref is not None:
+			if self.configPreviewMode.value == '2':
+				if not prev:
+					if self.session.pipshown:
+						self.session.pipshown = False
+						del self.session.pip
+					self.zapFunc(ref.ref, bouquet = self.getCurrentBouquet(), preview = False)
+					return
+				if not self.session.pipshown:
+					self.session.pip = self.session.instantiateDialog(PictureInPicture)
+					self.session.pip.show()
+					self.session.pipshown = True
+				n_service = self.pipServiceRelation.get(str(ref.ref), None)
+				if n_service is not None:
+					service = eServiceReference(n_service)
 				else:
-					self.zapFunc(ref.ref, bouquet = self.getCurrentBouquet(), preview = prev)
-					self.currch = self.session.nav.getCurrentlyPlayingServiceReference() and str(self.session.nav.getCurrentlyPlayingServiceReference().toString())
-				self['list'].setCurrentlyPlaying(self.session.nav.getCurrentlyPlayingServiceOrGroup())
-
-	def zapTo(self):
-		if self.session.nav.getCurrentlyPlayingServiceOrGroup() and '0:0:0:0:0:0:0:0:0' in self.session.nav.getCurrentlyPlayingServiceOrGroup().toString():
-			from Screens.InfoBarGenerics import setResumePoint
-			setResumePoint(self.session)
-		if self.zapFunc:
-			self.zapSelectedService(True)
-			self.refreshTimer.start(2000)
-		if not self.currch or self.currch == self.prevch:
-			if self.zapFunc:
-				self.zapFunc(None, False)
-				self.closeEventViewDialog()
-				self.close('close')
+					service = ref.ref
+				if self.currch == service.toString():
+					if self.session.pipshown:
+						self.session.pipshown = False
+						del self.session.pip
+					self.zapFunc(ref.ref, bouquet = self.getCurrentBouquet(), preview = False)
+					return
+				if self.prevch != service.toString() and currservice != service.toString():
+					self.session.pip.playService(service)
+					self.currch = self.session.pip.getCurrentService() and str(self.session.pip.getCurrentService().toString())
 			else:
-				self.closeEventViewDialog()
-				self.close()
+				self.zapFunc(ref.ref, bouquet = self.getCurrentBouquet(), preview = prev)
+				self.currch = self.session.nav.getCurrentlyPlayingServiceReference() and str(self.session.nav.getCurrentlyPlayingServiceReference().toString())
 
 class EPGServiceNumberSelection:
 	def __init__(self):

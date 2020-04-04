@@ -26,7 +26,6 @@ class EPGListBase(GUIComponent):
 		print "[EPGListBase] Init"
 		GUIComponent.__init__(self)
 
-		self.currentlyPlaying = None
 		self.timer = timer
 		self.onSelChanged = [ ]
 		if selChangedCB is not None:
@@ -81,9 +80,6 @@ class EPGListBase(GUIComponent):
 		self.setFontsize()
 
 		return rc
-
-	def setCurrentlyPlaying(self, serviceref):
-		self.currentlyPlaying = serviceref
 
 	def getEventFromId(self, service, eventid):
 		event = None

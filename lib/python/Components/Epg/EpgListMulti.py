@@ -32,9 +32,7 @@ class EPGListMulti(EPGListBase):
 		return rc
 
 	def getCurrentChangeCount(self):
-		if self.l.getCurrentSelection() is not None:
-			return self.l.getCurrentSelection()[7]
-		return 0
+		return self.l.getCurrentSelection()[7] if self.l.getCurrentSelection() is not None else 0
 
 	def setItemsPerPage(self):
 		if self.numberOfRows:
@@ -151,7 +149,6 @@ class EPGListMulti(EPGListBase):
 		self.list = self.queryEPG(test)
 		self.l.setList(self.list)
 		self.recalcEntrySize()
-		self.selectionChanged()
 
 	def updateEPG(self, direction):
 		test = [ x[2] and (x[0], direction, x[2]) or (x[0], direction, 0) for x in self.list ]
@@ -166,7 +163,6 @@ class EPGListMulti(EPGListBase):
 			cnt+=1
 		self.l.setList(self.list)
 		self.recalcEntrySize()
-		self.selectionChanged()
 
 	def getSelectedEventId(self):
 		x = self.l.getCurrentSelection()

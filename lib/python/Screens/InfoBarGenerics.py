@@ -1707,7 +1707,7 @@ class InfoBarEPG:
 		if self.servicelist is None:
 			return
 		startBouquet = self.servicelist.getRoot()
-		startRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
+		startRef = self.lastservice if isMoviePlayerInfoBar(self) else self.session.nav.getCurrentlyPlayingServiceOrGroup()
 		if self.shouldUseNewEPG():
 			self.NewMultiServiceEPG(EPGSelectionGraph, config.epgselection.graph_showbouquet.value, startBouquet, startRef)
 		else:
@@ -1721,9 +1721,8 @@ class InfoBarEPG:
 			return
 		if self.shouldUseNewEPG():
 			startBouquet = self.servicelist.getRoot()
-			startRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
-			ref = self.lastservice if isMoviePlayerInfoBar(self) else startRef
-			if ref:
+			startRef = self.lastservice if isMoviePlayerInfoBar(self) else self.session.nav.getCurrentlyPlayingServiceOrGroup()
+			if startRef:
 				bouquets = self.servicelist.getEPGBouquetList()
 				services = self.getBouquetServices(startBouquet)
 				self.serviceSel = SimpleServicelist(services)

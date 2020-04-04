@@ -1,32 +1,22 @@
-from time import localtime, time, strftime, mktime
+from time import localtime, time, mktime
 
-from enigma import eServiceReference, eTimer, eServiceCenter, ePoint
+from enigma import eTimer
 
-from Screens.HelpMenu import HelpableScreen
-from Components.About import about
-from Components.ActionMap import HelpableActionMap, HelpableNumberActionMap
-from Components.Button import Button
+from Components.ActionMap import HelpableActionMap
 from Components.config import config, configfile
 from Components.Epg.EpgListGraph import EPGListGraph, TimelineText, EPG_TYPE_INFOBARGRAPH, EPG_TYPE_GRAPH, MAX_TIMELINES
-from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection
+from EpgSelectionBase import EPGSelectionBase, EPGBouquetSelection, EPGServiceZap
 from Components.Label import Label
 from Components.Pixmap import Pixmap
-from Components.Sources.ServiceEvent import ServiceEvent
 from Components.Sources.Event import Event
-from Components.UsageConfig import preferredTimerPath
-from Screens.TimerEdit import TimerSanityConflict
 from Screens.EventView import EventViewSimple
-from Screens.ChoiceBox import ChoiceBox
-from Screens.MessageBox import MessageBox
-from Screens.PictureInPicture import PictureInPicture
 from Screens.Setup import Setup
-from ServiceReference import ServiceReference
 
 # Various value are in minutes, while others are in seconds.
 # Use this to remind us what is going on...
 SECS_IN_MIN = 60
 
-class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
+class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 	# InfobarGraph and Graph EPGs are use separately named but otherwise identical configuration
 	def __config(self, name):
 		return config.epgselection.dict()[('graph' if self.type == EPG_TYPE_GRAPH else 'infobar') + '_' + name]
@@ -36,6 +26,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 
 		type = EPG_TYPE_GRAPH if EPGtype == 'graph' else EPG_TYPE_INFOBARGRAPH
 		EPGSelectionBase.__init__(self, type, session, zapFunc, bouquetChangeCB, serviceChangeCB, startBouquet, startRef, bouquets)
+		EPGServiceZap.__init__(self, self.__config('preview_mode'), self.__config('ok'), self.__config('oklong'))
 
 		graphic = self.__config('type_mode').value == "graphics"
 		if self.type == EPG_TYPE_GRAPH:
@@ -105,7 +96,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 			}, -1)
 		self['input_actions'].csel = self
 
-		self['list'] = EPGListGraph(type=self.type, selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer, graphic=graphic)
+		self['list'] = EPGListGraph(type=self.type, session=self.session, selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer, graphic=graphic)
 		self['list'].setTimeFocus(time())
 
 	def createSetup(self):
@@ -133,12 +124,10 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection):
 		self.listTimer.start(1, True)
 
 	def loadEPGData(self):
-		serviceref = self.session.nav.getCurrentlyPlayingServiceOrGroup()
 		self._populateBouquetList()
 		self['list'].fillEPGNoRefresh(self.services)
 		if self.type == EPG_TYPE_INFOBARGRAPH or not config.epgselection.graph_channel1.value:
-			self['list'].moveToService(serviceref)
-		self['list'].setCurrentlyPlaying(serviceref)
+			self['list'].moveToService(self.startRef)
 		self.moveTimeLines()
 		self['lab1'].hide()
 
