@@ -967,24 +967,6 @@ class ChannelSelectionEPG(InfoBarButtonSetup):
 				break
 		epg.setService(ServiceReference(self.getCurrentSelection()))
 
-	def zapToService(self, service, preview=False, zapback=False):
-		if self.startServiceRef is None:
-			self.startServiceRef = self.session.nav.getCurrentlyPlayingServiceOrGroup()
-		if service is not None:
-			if self.servicelist.getRoot() != self.epg_bouquet:
-				self.servicelist.clearPath()
-				if self.servicelist.bouquet_root != self.epg_bouquet:
-					self.servicelist.enterPath(self.servicelist.bouquet_root)
-				self.servicelist.enterPath(self.epg_bouquet)
-			self.servicelist.setCurrent(service)
-		if not zapback or preview:
-			self.zap(enable_pipzap=True)
-		if (self.dopipzap or zapback) and not preview:
-			self.zapBack()
-		if not preview:
-			self.startServiceRef = None
-			self.startRoot = None
-
 class ChannelSelectionEdit:
 	def __init__(self):
 		self.entry_marked = False
