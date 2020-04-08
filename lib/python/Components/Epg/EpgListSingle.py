@@ -14,7 +14,7 @@ from EpgListBase import EPGListBase
 SECS_IN_MIN = 60
 
 class EPGListSingle(EPGListBase):
-	def __init__(self, itemsPerPageConfig, eventfsConfig, selChangedCB = None, timer = None, time_epoch = 120, overjump_empty = False, graphic=False, time_focus = None):
+	def __init__(self, itemsPerPageConfig, eventfsConfig, selChangedCB = None, timer = None, time_focus = None):
 		print "[EPGListSingle] Init"
 		EPGListBase.__init__(self, selChangedCB, timer)
 
@@ -82,18 +82,18 @@ class EPGListSingle(EPGListBase):
 		left, dateWidth, sepWidth, timesWidth, breakWidth = skin.parameters.get("EPGSingleColumnSpecs", (0, dateW, 5, timesW, 20))
 		if config.usage.time.wide.value:
 			timesWidth = int(timesWidth * wideScale)
-		self.weekday_rect = eRect(left, 0, dateWidth, height)
+		self._weekday_rect = eRect(left, 0, dateWidth, height)
 		left += dateWidth + sepWidth
-		self.datetime_rect = eRect(left, 0, timesWidth, height)
+		self._datetime_rect = eRect(left, 0, timesWidth, height)
 		left += timesWidth + breakWidth
-		self.descr_rect = eRect(left, 0, width - left, height)
+		self._descr_rect = eRect(left, 0, width - left, height)
 		self.showend = True  # This is not an unused variable. It is a flag used by EPGSearch plugin
 
 	def buildEntry(self, service, eventId, beginTime, duration, eventName):
 		clock_types = self.getPixmapForEntry(service, eventId, beginTime, duration)
-		r1 = self.weekday_rect
-		r2 = self.datetime_rect
-		r3 = self.descr_rect
+		r1 = self._weekday_rect
+		r2 = self._datetime_rect
+		r3 = self._descr_rect
 		split = int(r2.width() * 0.55)
 		t = localtime(beginTime)
 		et = localtime(beginTime + duration)
