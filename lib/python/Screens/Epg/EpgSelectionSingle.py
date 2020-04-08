@@ -18,7 +18,6 @@ class EPGSelectionSingle(EPGSelectionBase):
 				'epg': (self.openEventView, _('Show detailed event info')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
-		self['epgactions'].csel = self
 		self['epgcursoractions'] = HelpableActionMap(self, 'DirectionActions',
 			{
 				'left': (self.prevPage, _('Move up a page')),
@@ -26,7 +25,6 @@ class EPGSelectionSingle(EPGSelectionBase):
 				'up': (self.moveUp, _('Go to previous channel')),
 				'down': (self.moveDown, _('Go to next channel'))
 			}, -1)
-		self['epgcursoractions'].csel = self
 
 		self['list'] = EPGListSingle(selChangedCB = self.onSelectionChanged, timer = session.nav.RecordTimer,
 			itemsPerPageConfig = config.epgselection.enhanced_itemsperpage,

@@ -32,7 +32,6 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection, EPGServi
 				'infolong': (self.openSingleEPG, _('Show single epg for current channel')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
-		self['epgactions'].csel = self
 		self['epgcursoractions'] = HelpableActionMap(self, 'DirectionActions',
 			{
 				'left': (self.prevPage, _('Move up a page')),
@@ -40,7 +39,6 @@ class EPGSelectionEnhanced(EPGSelectionBase, EPGServiceNumberSelection, EPGServi
 				'up': (self.moveUp, _('Go to previous channel')),
 				'down': (self.moveDown, _('Go to next channel'))
 			}, -1)
-		self['epgcursoractions'].csel = self
 			
 		self.list = []
 		self.servicelist = servicelist

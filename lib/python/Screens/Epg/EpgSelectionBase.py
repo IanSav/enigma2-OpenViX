@@ -63,7 +63,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.eventviewWasShown = False
 		self.session.pipshown = False
 		self.pipServiceRelation = getRelationDict() if plugin_PiPServiceRelation_installed else {}
-		self.BouquetRoot = False
+		self.bouquetRoot = False
 		self["number"] = Label()
 		self["number"].hide()
 		self['Service'] = ServiceEvent()
@@ -78,7 +78,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 			{
 				'back': (self.closeChoiceBoxDialog, _('Close dialog')),
 			}, -1)
-		self['dialogactions'].csel = self
 		self["dialogactions"].setEnabled(False)
 
 		self['okactions'] = HelpableActionMap(self, 'OkCancelActions',
@@ -87,7 +86,6 @@ class EPGSelectionBase(Screen, HelpableScreen):
 				'OK': (ignoreLongKeyPress(self.OK), _('Zap to channel (setup in menu)')),
 				'OKLong': (self.OKLong, _('Zap to channel and close (setup in menu)'))
 			}, -1)
-		self['okactions'].csel = self
 		self['colouractions'] = HelpableActionMap(self, 'ColorActions',
 			{
 				'red': (ignoreLongKeyPress(self.openIMDb), _('IMDB search for current event')),
@@ -98,13 +96,12 @@ class EPGSelectionBase(Screen, HelpableScreen):
 				'blue': (ignoreLongKeyPress(self.addAutoTimer), _('Add an autotimer for current event')),
 				'bluelong': (self.openAutoTimerList, _('Show autotimer list'))
 			}, -1)
-		self['colouractions'].csel = self
 		self['recordingactions'] = HelpableActionMap(self, 'InfobarInstantRecord',
 			{
 				'ShortRecord': (self.recordTimerQuestion, _('Add a record timer for current event')),
 				'LongRecord': (self.doZapTimer, _('Add a zap timer for current event'))
 			}, -1)
-		self['recordingactions'].csel = self
+		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions', {}, -1)
 
 		self.refreshTimer = eTimer()
 		self.refreshTimer.timeout.get().append(self.refreshList)
@@ -139,7 +136,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self['list'].moveTo(self['list'].instance.moveEnd)
 
 	def getCurrentBouquet(self):
-		if self.BouquetRoot:
+		if self.bouquetRoot:
 			return self.startBouquet
 		elif self.has_key('bouquetlist'):
 			cur = self['bouquetlist'].l.getCurrentSelection()
@@ -582,7 +579,6 @@ class EPGServiceNumberSelection:
 				'8': (self.keyNumberGlobal, _('enter number to jump to channel.')),
 				'9': (self.keyNumberGlobal, _('enter number to jump to channel.'))
 			}, -1)
-		self['input_actions'].csel = self
 
 	def keyNumberGlobal(self, number):
 		self.zapNumberStarted = True
@@ -675,7 +671,6 @@ class EPGBouquetSelection:
 				'cancel': self.bouquetListHide,
 				'OK': self.bouquetListOK,
 			}, -1)
-		self['bouquetokactions'].csel = self
 		self["bouquetokactions"].setEnabled(False)
 
 		self['bouquetcursoractions'] = ActionMap(['DirectionActions'],
@@ -685,7 +680,6 @@ class EPGBouquetSelection:
 				'up': self.moveBouquetUp,
 				'down': self.moveBouquetDown
 			}, -1)
-		self['bouquetcursoractions'].csel = self
 		self["bouquetcursoractions"].setEnabled(False)
 
 	def _populateBouquetList(self):

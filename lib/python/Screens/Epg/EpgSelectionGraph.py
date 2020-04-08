@@ -63,7 +63,6 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 				'up': (self.moveUp, _('Go to previous channel')),
 				'down': (self.moveDown, _('Go to next channel'))
 			}, -1)
-		self['epgcursoractions'].csel = self
 
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
 			{
@@ -79,7 +78,6 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 				'tvlong': (self.togglePIG, _('Toggle picture In graphics')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
-		self['epgactions'].csel = self
 
 		self['input_actions'] = HelpableActionMap(self, 'NumberActions',
 			{
@@ -94,7 +92,6 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 				'9': (self.goToPrimeTime, _('Jump to prime time')),
 				'0': (self.goToCurrentTimeAndTop, _('Move to home of list'))
 			}, -1)
-		self['input_actions'].csel = self
 
 		self['list'] = EPGListGraph(type=self.type, session=self.session, selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer, graphic=graphic)
 		self['list'].setTimeFocus(time())
@@ -115,7 +112,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 
 	def onCreate(self):
 		self['list'].recalcEventSize()
-		self.BouquetRoot = self.startBouquet.toString().startswith('1:7:0')
+		self.bouquetRoot = self.startBouquet.toString().startswith('1:7:0')
 		self['timeline_text'].setEntries(self['list'], self['timeline_now'], self.time_lines, False)
 		self['lab1'].show()
 		self.show()
@@ -173,7 +170,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 			self.openSingleEPG()
 
 	def bouquetChanged(self):
-		self.BouquetRoot = False
+		self.bouquetRoot = False
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
 		l = self['list']
 		l.fillEPG(self.services)

@@ -42,7 +42,6 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 				'up': (self.moveUp, _('Go to previous channel')),
 				'down': (self.moveDown, _('Go to next channel'))
 			}, -1)
-		self['epgcursoractions'].csel = self
 
 		self['epgactions'] = HelpableActionMap(self, 'EPGSelectActions',
 			{
@@ -57,7 +56,6 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 				'tv': (self.bouquetList, _('Toggle between bouquet/epg lists')),
 				'menu': (self.createSetup, _('Setup menu'))
 			}, -1)
-		self['epgactions'].csel = self
 
 		self['list'] = EPGListMulti(selChangedCB=self.onSelectionChanged, timer=session.nav.RecordTimer)
 
@@ -95,7 +93,7 @@ class EPGSelectionMulti(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 		self['list'].updateEPG(1)
 
 	def bouquetChanged(self):
-		self.BouquetRoot = False
+		self.bouquetRoot = False
 		now = time() - int(config.epg.histminutes.value) * SECS_IN_MIN
 		self.services = self.getBouquetServices(self.getCurrentBouquet())
 		self['list'].fillEPG(self.services, self.ask_time)
