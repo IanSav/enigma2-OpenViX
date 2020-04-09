@@ -720,8 +720,9 @@ class EPGListGraph(EPGListBase):
 				self.time_base, self.time_base + self.time_epoch_secs, self.event_rect.width())
 			self.selection_rect = eRect(xpos + self.event_rect.left(), 0, width, self.event_rect.height())
 		else:
-			self.selection_rect = self.event_rect
-		self.l.setSelectionClip(self.selection_rect, False)
+			self.selection_rect = eRect(self.event_rect.left(), self.event_rect.top(), self.event_rect.width(), self.event_rect.height())
+		# have to copy construct the parameter for this native function or odd selection behaviour results
+		self.l.setSelectionClip(eRect(self.selection_rect.left(), self.selection_rect.top(), self.selection_rect.width(), self.selection_rect.height()), False)
 		self.selectionChanged()
 
 	def selEvent(self, dir, visible = True):
