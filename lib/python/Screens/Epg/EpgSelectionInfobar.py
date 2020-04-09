@@ -139,15 +139,13 @@ class EPGSelectionInfobar(EPGSelectionBase, EPGServiceZap):
 			self.prevService()
 
 	def eventViewCallback(self, setEvent, setService, val):
-		l = self['list']
-		old = l.getCurrent()
 		if val == -1:
 			self.moveUp()
 		elif val == +1:
 			self.moveDown()
-		cur = l.getCurrent()
-		setService(cur[1])
-		setEvent(cur[0])
+		event, service = self['list'].getCurrent()[:2]
+		setService(service)
+		setEvent(event)
 
 	def sortEPG(self):
 		if config.epgselection.sort.value == '0':

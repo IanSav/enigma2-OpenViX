@@ -214,9 +214,7 @@ class EPGSelectionGraph(EPGSelectionBase, EPGBouquetSelection, EPGServiceZap):
 			self.openEventViewDialog()
 	
 	def openEventViewDialog(self):
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		service = cur[1]
+		event, service = self['list'].getCurrent()[:2]
 		if event is not None:
 			self.eventviewDialog = self.session.instantiateDialog(EventViewSimple, event, service, skin='InfoBarEventView')
 			self.eventviewDialog.show()

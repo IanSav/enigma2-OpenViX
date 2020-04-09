@@ -148,9 +148,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		def openSimilarList(eventid, refstr):
 			from Screens.Epg.EpgSelectionSimilar import EPGSelectionSimilar
 			self.session.open(EPGSelectionSimilar, refstr, eventid)
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		service = cur[1]
+		event, service = self['list'].getCurrent()[:2]
 		if event is not None:
 			self.session.open(EventViewEPGSelect, event, service, callback=self.eventViewCallback, similarEPGCB=openSimilarList)
 
@@ -170,20 +168,18 @@ class EPGSelectionBase(Screen, HelpableScreen):
 
 	def openSingleEPG(self):
 		from Screens.Epg.EpgSelectionSingle import EPGSelectionSingle
-		cur = self['list'].getCurrent()
-		if cur[0] is not None:
-			event = cur[0]
-			serviceref = cur[1].ref
-			if serviceref is not None:
-				self.session.open(EPGSelectionSingle, serviceref, event.getBeginTime())
+		event, service = self['list'].getCurrent()[:2]
+		if service is not None and service.ref is not None:
+			self.session.open(EPGSelectionSingle, service.ref, time() if event is None else event.getBeginTime())
 
 	def openIMDb(self):
 		self.closeEventViewDialog()
 		try:
 			from Plugins.Extensions.IMDb.plugin import IMDB, IMDBEPGSelection
 			try:
-				cur = self['list'].getCurrent()
-				event = cur[0]
+				event = self['list'].getCurrent()[0]
+				if event is None:
+					return
 				name = event.getEventName()
 			except:
 				name = ''
@@ -197,8 +193,9 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		try:
 			from Plugins.Extensions.EPGSearch.EPGSearch import EPGSearch
 			try:
-				cur = self['list'].getCurrent()
-				event = cur[0]
+				event = self['list'].getCurrent()[0]
+				if event is None:
+					return
 				name = event.getEventName()
 			except:
 				name = ''
@@ -210,12 +207,10 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.closeEventViewDialog()
 		try:
 			from Plugins.Extensions.AutoTimer.AutoTimerEditor import addAutotimerFromEvent
-			cur = self['list'].getCurrent()
-			event = cur[0]
-			if not event:
+			event, service = self['list'].getCurrent()[:2]
+			if event is None:
 				return
-			serviceref = cur[1]
-			addAutotimerFromEvent(self.session, evt=event, service=serviceref)
+			addAutotimerFromEvent(self.session, evt=event, service=service)
 			self.refreshTimer.start(3000)
 		except ImportError:
 			self.session.open(MessageBox, _('The AutoTimer plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
@@ -223,12 +218,10 @@ class EPGSelectionBase(Screen, HelpableScreen):
 	def addAutoTimerSilent(self):
 		try:
 			from Plugins.Extensions.AutoTimer.AutoTimerEditor import addAutotimerFromEventSilent
-			cur = self['list'].getCurrent()
-			event = cur[0]
-			if not event:
+			event, service = self['list'].getCurrent()[:2]
+			if event is None:
 				return
-			serviceref = cur[1]
-			addAutotimerFromEventSilent(self.session, evt=event, service=serviceref)
+			addAutotimerFromEventSilent(self.session, evt=event, service=service)
 			self.refreshTimer.start(3000)
 		except ImportError:
 			self.session.open(MessageBox, _('The AutoTimer plugin is not installed!\nPlease install it.'), type=MessageBox.TYPE_INFO, timeout=10)
@@ -297,9 +290,7 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.refreshList()
 
 	def recordTimerQuestion(self, manual=False):
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		serviceref = cur[1]
+		event, serviceref = self['list'].getCurrent()[:2]
 		if event is None:
 			return
 		eventid = event.getEventId()
@@ -374,14 +365,12 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.doInstantTimer(1)
 
 	def doInstantTimer(self, zap):
-		cur = self['list'].getCurrent()
-		event = cur[0]
-		serviceref = cur[1]
+		event, service = self['list'].getCurrent()[:2]
 		if event is None:
 			return
 		eventid = event.getEventId()
-		refstr = serviceref.ref.toString()
-		newEntry = RecordTimerEntry(serviceref, checkOldTimers=True, *parseEvent(event))
+		refstr = service.ref.toString()
+		newEntry = RecordTimerEntry(service, checkOldTimers=True, *parseEvent(event))
 		self.InstantRecordDialog = self.session.instantiateDialog(InstantRecordTimerEntry, newEntry, zap)
 		retval = [True, self.InstantRecordDialog.retval()]
 		self.session.deleteDialogWithCallback(self.finishedAdd, self.InstantRecordDialog, retval)
@@ -419,22 +408,20 @@ class EPGSelectionBase(Screen, HelpableScreen):
 		self.finishedAdd(answer)
 
 	def onSelectionChanged(self):
-		cur = self['list'].getCurrent()
-		event = cur[0]
+		event, service = self['list'].getCurrent()[:2]
 		self['Event'].newEvent(event)
-		if cur[1] is None:
+		if service is None:
 			self['Service'].newService(None)
 		else:
-			self['Service'].newService(cur[1].ref)
-		if cur[1] is None or cur[1].getServiceName() == '':
+			self['Service'].newService(service.ref)
+		if service is None or service.getServiceName() == '':
 			self['key_green'].setText('')
 			return
 		if event is None:
 			self['key_green'].setText('')
 			return
-		serviceref = cur[1]
 		eventid = event.getEventId()
-		refstr = ':'.join(serviceref.ref.toString().split(':')[:11])
+		refstr = ':'.join(service.ref.toString().split(':')[:11])
 		isRecordEvent = False
 		for timer in self.session.nav.RecordTimer.timer_list:
 			if timer.eit == eventid and ':'.join(timer.service_ref.ref.toString().split(':')[:11]) == refstr:
