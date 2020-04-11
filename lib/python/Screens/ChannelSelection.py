@@ -16,7 +16,7 @@ from Components.UsageConfig import preferredTimerPath
 from Components.Renderer.Picon import getPiconName
 from Screens.TimerEdit import TimerSanityConflict
 profile("ChannelSelection.py 1")
-from Epg.EpgSelectionChannel import EPGSelectionChannel
+from Epg.EpgSelectionSingle import EPGSelectionSingle
 from enigma import eActionMap, eServiceReference, eEPGCache, eServiceCenter, eRCInput, eTimer, ePoint, eDVBDB, iPlayableService, iServiceInformation, getPrevAsciiCode, eEnv, loadPNG, eDVBLocalTimeHandler
 from Components.config import config, configfile, ConfigSubsection, ConfigText, ConfigYesNo
 from Tools.NumericalTextInput import NumericalTextInput
@@ -940,32 +940,16 @@ class ChannelSelectionEPG(InfoBarButtonSetup):
 		self.closeChoiceBoxDialog()
 
 	def showEPGList(self):
-		ref=self.getCurrentSelection()
-		if ref:
-			self.savedService = ref
-			self.session.openWithCallback(self.SingleServiceEPGClosed, EPGSelectionChannel, ref, serviceChangeCB=self.changeServiceCB)
+		def zapToService(service, bouquet = None, preview = False, zapback = False):
+			pass
 
-	def SingleServiceEPGClosed(self, ret=False):
-		if ret:
-			service = self.getCurrentSelection()
-			if service is not None:
-				self.saveChannel(service)
-				self.addToHistory(service)
-				self.close()
-		else:
-			self.setCurrentSelection(self.savedService)
+		def epgClosed(ret = False):
+			pass
 
-	def changeServiceCB(self, direction, epg):
-		beg = self.getCurrentSelection()
-		while True:
-			if direction > 0:
-				self.moveDown()
-			else:
-				self.moveUp()
-			cur = self.getCurrentSelection()
-			if cur == beg or not (cur.flags & eServiceReference.isMarker):
-				break
-		epg.setService(ServiceReference(self.getCurrentSelection()))
+		startRef = self.getCurrentSelection()
+		if startRef:
+			self.session.openWithCallback(epgClosed, EPGSelectionSingle, self, zapToService,
+				self.getRoot(), startRef, self.getEPGBouquetList())
 
 class ChannelSelectionEdit:
 	def __init__(self):
